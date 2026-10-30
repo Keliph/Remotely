@@ -1,0 +1,9 @@
+# build outputs
+pc/BlanketRemote.exe
+pc/dist/
+# tv_test.py writes pairing files next to itself
+tv/tv_cert.pem
+tv/tv_key.pem
+tv/samsung_token_*.txt
+__pycache__/
+.DS_Store

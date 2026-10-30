@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Blanket Remote</title>
+<style>
+  :root { --bg:#0f0f10; --card:#1a1a1c; --line:#2a2a2e; --text:#ececec; --dim:#9a9aa0; --ok:#5ee07a; --warn:#f0b04a; }
+  * { box-sizing: border-box; }
+  body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--text);
+         font-family: "Segoe UI", system-ui, sans-serif; display: flex; align-items: center; justify-content: center; padding: 24px; }
+  main { width: 100%; max-width: 820px; }
+  header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+  h1 { font-size: 22px; font-weight: 600; margin: 0; letter-spacing: -0.01em; }
+  h1 span { color: var(--dim); font-weight: 400; font-size: 14px; margin-left: 8px; }
+  .pill { font-size: 13px; padding: 6px 12px; border-radius: 999px; background: #2a2414; color: var(--warn); }
+  .pill.ok { background: #14261a; color: var(--ok); }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 28px;
+          display: grid; grid-template-columns: 280px 1fr; gap: 32px; align-items: center; }
+  .qr { background: #fff; border-radius: 14px; padding: 14px; aspect-ratio: 1; }
+  .qr img { width: 100%; height: 100%; display: block; image-rendering: pixelated; }
+  ol { margin: 0; padding-left: 20px; line-height: 1.55; font-size: 15px; }
+  ol li { margin-bottom: 12px; }
+  ol li b { font-weight: 600; }
+  .url { margin-top: 6px; font-family: Consolas, monospace; font-size: 12.5px; color: var(--dim);
+         word-break: break-all; background: #121214; border: 1px solid var(--line); padding: 8px 10px; border-radius: 8px; }
+  details { margin-top: 10px; color: var(--dim); font-size: 13px; }
+  details summary { cursor: pointer; }
+  details div { margin-top: 6px; }
+  .settings { margin-top: 14px; background: var(--card); border: 1px solid var(--line); border-radius: 18px;
+              padding: 6px 22px; }
+  .set { display: flex; align-items: center; justify-content: space-between; padding: 14px 0; gap: 16px; }
+  .set + .set { border-top: 1px solid var(--line); }
+  .set small { display: block; color: var(--dim); font-size: 13px; margin-top: 2px; }
+  button { font: inherit; font-size: 14px; padding: 8px 14px; border-radius: 10px; border: 1px solid var(--line);
+           background: #242428; color: var(--text); cursor: pointer; white-space: nowrap; }
+  button:hover { background: #2e2e33; }
+  button.danger:hover { background: #3a1f1f; border-color: #5a2a2a; }
+  .switch { position: relative; width: 46px; height: 26px; flex: none; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .switch span { position: absolute; inset: 0; background: #3a3a40; border-radius: 999px; cursor: pointer; transition: .15s; }
+  .switch span::before { content: ""; position: absolute; width: 20px; height: 20px; left: 3px; top: 3px;
+                         background: #fff; border-radius: 50%; transition: .15s; }
+  .switch input:checked + span { background: #2f9e4a; }
+  .switch input:checked + span::before { transform: translateX(20px); }
+  .help { margin-top: 14px; color: var(--dim); font-size: 13px; line-height: 1.55; padding: 0 4px; }
+  .help b { color: var(--text); font-weight: 600; }
+  @media (max-width: 680px) { .card { grid-template-columns: 1fr; } .qr { max-width: 280px; margin: 0 auto; } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Blanket Remote <span id="pcname"></span></h1>
+    <div id="pill" class="pill">Waiting for your phone…</div>
+  </header>
+
+  <section class="card">
+    <div class="qr"><img id="qr" alt="QR code"></div>
+    <div>
+      <ol>
+        <li>Connect your phone to the <b>same Wi-Fi</b> as this PC.</li>
+        <li>Open your phone <b>camera</b> and point it at this code. Tap the link.</li>
+        <li>In your phone browser menu, tap <b>Add to Home screen</b> — next time it's one tap.</li>
+      </ol>
+      <div class="url" id="url">…</div>
+      <details id="othersBox" hidden>
+        <summary>Phone won't connect? Try another address</summary>
+        <div id="others"></div>
+      </details>
+    </div>
+  </section>
+
+  <section class="settings">
+    <div class="set">
+      <div>Start with Windows<small>Keeps the remote ready every time the PC turns on.</small></div>
+      <label class="switch"><input type="checkbox" id="auto"><span></span></label>
+    </div>
+    <div class="set">
+      <div>New key<small>Disconnects every phone. Use it if someone else got your QR code.</small></div>
+      <button id="newkey">Make new key</button>
+    </div>
+    <div class="set">
+      <div>Turn off Blanket Remote<small>Stops it until you open it again or restart the PC.</small></div>
+      <button id="quit" class="danger">Turn off</button>
+    </div>
+  </section>
+
+  <p class="help">
+    <b>Phone says "Can't reach the PC"?</b> When Windows asked about the firewall, it needed <b>Allow access</b>.
+    If you clicked Cancel, open Blanket Remote again or allow it in Windows Security → Firewall → Allow an app.<br>
+    You can close this tab — Blanket Remote keeps running. Open the app again to see this page.
+  </p>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const post = (path, body) => fetch(path, { method: "POST", headers: { "X-BR": "1", "Content-Type": "application/json" },
+                                          body: JSON.stringify(body || {}) });
+let lastUrl = "";
+
+async function refresh() {
+  let d;
+  try { d = await (await fetch("/api/setup")).json(); } catch (e) {
+    $("pill").textContent = "Blanket Remote is off"; $("pill").className = "pill"; return;
+  }
+  $("pcname").textContent = d.name + " · v" + d.version;
+  if (d.url !== lastUrl) {
+    lastUrl = d.url; $("qr").src = d.qr; $("url").textContent = d.url;
+    $("othersBox").hidden = !d.others || !d.others.length;
+    $("others").innerHTML = "";
+    (d.others || []).forEach(u => { const p = document.createElement("div"); p.textContent = u; $("others").appendChild(p); });
+  }
+  if (document.activeElement !== $("auto")) $("auto").checked = d.autostart;
+  const n = d.phones;
+  $("pill").textContent = n ? (n === 1 ? "Phone connected ✓" : n + " phones connected ✓") : "Waiting for your phone…";
+  $("pill").className = n ? "pill ok" : "pill";
+}
+
+$("auto").onchange = async e => { await post("/api/autostart", { on: e.target.checked }); refresh(); };
+$("newkey").onclick = async () => {
+  if (!confirm("Make a new key? Every phone will need to scan the new QR code.")) return;
+  await post("/api/newkey"); lastUrl = ""; refresh();
+};
+$("quit").onclick = async () => {
+  if (!confirm("Turn off Blanket Remote? Your phone won't work until you open it again.")) return;
+  clearInterval(timer);
+  await post("/api/quit");
+  document.body.innerHTML = '<p style="color:#9a9aa0;font-family:Segoe UI,sans-serif">Blanket Remote is off. You can close this tab.</p>';
+};
+
+refresh();
+const timer = setInterval(refresh, 2000);
+</script>
+</body>
+</html>

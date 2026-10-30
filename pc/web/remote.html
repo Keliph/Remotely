@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#2a1c16">
+<title>Blanket Remote</title>
+<style>
+  @font-face { font-family: "Outfit"; font-weight: 300; font-display: swap; src: url(/fonts/outfit-latin-300.woff2) format("woff2"); }
+  @font-face { font-family: "Outfit"; font-weight: 400; font-display: swap; src: url(/fonts/outfit-latin-400.woff2) format("woff2"); }
+  @font-face { font-family: "Outfit"; font-weight: 500; font-display: swap; src: url(/fonts/outfit-latin-500.woff2) format("woff2"); }
+  /* Outfit has no Urdu letters, so Urdu falls through to this rounded face */
+  @font-face { font-family: "Urdu"; font-display: swap; src: url(/fonts/baloo-arabic-500.woff2) format("woff2");
+    unicode-range: U+0600-06FF, U+0750-077F, U+08A0-08FF, U+200C-200E, U+FB50-FDFF, U+FE70-FEFC; }
+
+  :root {
+    --ink: #fff;
+    --ink-2: rgba(255, 255, 255, .78);
+    --ink-3: rgba(255, 255, 255, .52);
+    --pill: rgba(28, 24, 22, .30);        /* dark smoked glass for buttons */
+    --pill-press: rgba(28, 24, 22, .52);
+    --solid: #fff;                         /* the one white button per panel */
+    --solid-ink: #1d1410;
+  }
+  * { box-sizing: border-box; margin: 0; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body {
+    color: var(--ink); font: 400 16px/1.3 "Outfit", "Urdu", system-ui, sans-serif;
+    display: flex; flex-direction: column; gap: 10px;
+    height: 100vh; height: 100dvh; overflow: hidden;
+    padding: max(10px, env(safe-area-inset-top)) 10px max(10px, env(safe-area-inset-bottom));
+    background:
+      radial-gradient(75% 32% at 32% 64%, rgba(227, 150, 30, .50), transparent 72%),
+      radial-gradient(60% 35% at 90% 92%, rgba(160, 172, 184, .40), transparent 70%),
+      linear-gradient(180deg, #2a1c16 0%, #4a4240 52%, #6f7275 100%);
+  }
+  button { font: inherit; color: inherit; border: 0; background: none; cursor: pointer; touch-action: manipulation; }
+  svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+  .fill { fill: currentColor; stroke: none; }
+
+  /* ---- the glowing card = touchpad ---- */
+  #pad { position: relative; flex: 1; min-height: 170px; border-radius: 42px; overflow: hidden; touch-action: none;
+         background: linear-gradient(150deg, #ef9a52 0%, #e8b878 26%, #e9d7b8 58%, #ddc9a4 100%);
+         box-shadow: inset 0 1px 0 rgba(255, 255, 255, .35), 0 24px 48px rgba(0, 0, 0, .28); isolation: isolate; }
+  #pad::before { content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+                 background: linear-gradient(90deg, rgba(236, 104, 34, .65), transparent 26%),
+                             radial-gradient(70% 45% at 30% 100%, rgba(232, 160, 24, .9), transparent 75%); }
+  #core { position: absolute; left: 0; top: 0; z-index: 2; border-radius: 50%; pointer-events: none; will-change: transform;
+          filter: blur(16px);
+          background: radial-gradient(closest-side, rgba(24, 6, 2, .96) 0%, rgba(78, 16, 4, .92) 13%, rgba(160, 44, 10, .82) 28%,
+                                      rgba(212, 100, 26, .62) 44%, rgba(228, 160, 52, .36) 59%, rgba(232, 214, 184, 0) 76%); }
+  #pad > .label { position: absolute; z-index: 3; left: 28px; top: 26px; font-size: 16px; color: var(--ink); opacity: .92; }
+  #hint { position: absolute; z-index: 3; left: 28px; top: 54px; right: 70px; display: grid; gap: 2px;
+          font-size: 14px; color: var(--ink-2); pointer-events: none; transition: opacity .4s;
+          text-shadow: 0 1px 8px rgba(90, 40, 0, .25); }
+  #hint.gone { opacity: 0; }
+  #big { position: absolute; z-index: 3; left: 28px; right: 64px; bottom: 26px; pointer-events: none;
+         display: grid; gap: 1px; overflow-wrap: anywhere; text-shadow: 0 1px 12px rgba(90, 36, 0, .3); }
+  #big .sub { font-size: 13px; font-weight: 400; color: var(--ink-2); letter-spacing: .01em; }
+  #big .name { font-size: 21px; font-weight: 300; line-height: 1.15; letter-spacing: -.005em; }
+  #power { position: absolute; z-index: 4; right: 16px; top: 16px; width: 46px; height: 46px; border-radius: 50%;
+           display: grid; place-items: center; background: rgba(255, 255, 255, .22);
+           -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+           box-shadow: inset 0 1px 0 rgba(255, 255, 255, .4); }
+  #power:active { background: rgba(255, 255, 255, .38); }
+  #power svg { width: 21px; height: 21px; }
+  /* right edge: drag it with one finger to scroll */
+  #seam { position: absolute; z-index: 3; right: 0; top: 76px; bottom: 22px; width: 46px; pointer-events: none;
+          display: flex; flex-direction: column; align-items: center; justify-content: space-between; color: var(--ink-2); }
+  #seam::before { content: ""; position: absolute; top: 26px; bottom: 26px; left: 50%; border-left: 1.5px dashed rgba(255, 255, 255, .45); }
+  #seam svg { width: 18px; height: 18px; }
+  #pad.seaming #seam::before { border-left-color: #fff; }
+
+  /* ---- frosted dock ---- */
+  .dock { display: flex; flex-direction: column; gap: 12px; padding: 14px; border-radius: 38px;
+          background: rgba(255, 255, 255, .13);
+          -webkit-backdrop-filter: blur(28px) saturate(1.5); backdrop-filter: blur(28px) saturate(1.5);
+          border: 1px solid rgba(255, 255, 255, .16);
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, .22), 0 18px 40px rgba(0, 0, 0, .22); }
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .dock { background: rgba(84, 78, 76, .94); }
+  }
+
+  .clicks { display: flex; height: 52px; border-radius: 999px; background: var(--pill); overflow: hidden; }
+  .clicks button { flex: 1; color: var(--ink-2); font-size: 15px; }
+  .clicks button + button { border-left: 1px solid rgba(255, 255, 255, .1); }
+  .clicks button:active { background: var(--pill-press); color: var(--ink); }
+
+  .tabs { display: flex; gap: 22px; padding: 0 10px; }
+  .tabs button { height: 30px; font-size: 16px; color: var(--ink-3); display: flex; align-items: center; gap: 7px; }
+  .tabs button::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: 0; }
+  .tabs button[aria-selected="true"] { color: var(--ink); }
+  .tabs button[aria-selected="true"]::before { opacity: 1; }
+
+  .panel { display: none; gap: 8px; height: 206px; }
+  .panel.on { display: grid; }
+  .k { background: var(--pill); border-radius: 24px; display: flex; align-items: center; justify-content: center;
+       gap: 8px; min-height: 50px; font-size: 15px; color: var(--ink); transition: transform .08s, background .08s; }
+  .k:active { background: var(--pill-press); transform: scale(.96); }
+  .solid { background: var(--solid); color: var(--solid-ink); }
+  .solid:active { background: #e9e4df; }
+
+  #media { grid-template-columns: 1fr 1.35fr 1fr; grid-template-rows: 1.25fr 1fr 1fr; }
+  #media .play { border-radius: 999px; }
+  #media .play svg { width: 32px; height: 32px; }
+  .vol { grid-column: 1 / -1; display: flex; background: var(--pill); border-radius: 999px; overflow: hidden; }
+  .vol button { flex: 1; display: grid; place-items: center; }
+  .vol button + button { border-left: 1px solid rgba(255, 255, 255, .1); }
+  .vol button:active { background: var(--pill-press); }
+
+  #keys { --d: 196px; grid-template-columns: var(--d) 1fr; align-items: center; gap: 12px; }
+  .dpad { position: relative; width: var(--d); height: var(--d); border-radius: 50%; background: var(--pill); }
+  .dpad button { position: absolute; display: grid; place-items: center; }
+  .dpad .u, .dpad .d { left: 31.6%; width: 36.8%; height: 31.6%; }
+  .dpad .l, .dpad .r { top: 31.6%; width: 31.6%; height: 36.8%; }
+  .dpad .u { top: 0; border-radius: 999px 999px 0 0; } .dpad .d { bottom: 0; border-radius: 0 0 999px 999px; }
+  .dpad .l { left: 0; border-radius: 999px 0 0 999px; } .dpad .r { right: 0; border-radius: 0 999px 999px 0; }
+  .dpad .u:active, .dpad .d:active, .dpad .l:active, .dpad .r:active { background: rgba(28, 24, 22, .3); }
+  .dpad .ok { left: 31.6%; top: 31.6%; width: 36.8%; height: 36.8%; border-radius: 50%; font-weight: 500; font-size: 17px; }
+  .keygrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; height: 100%; }
+
+  #type { grid-template-rows: auto 1fr; grid-template-columns: minmax(0, 1fr); }
+  .typerow { display: flex; gap: 8px; }
+  #text { flex: 1; min-width: 0; height: 54px; padding: 0 20px; border: 0; border-radius: 999px; outline: none;
+          background: var(--pill); color: var(--ink); font: inherit; font-size: 17px; -webkit-user-select: text; user-select: text; }
+  #text:focus { box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .5); }
+  #text::placeholder { color: var(--ink-3); }
+  #send { width: 54px; height: 54px; border-radius: 50%; display: grid; place-items: center; }
+  .typekeys { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-template-rows: 1fr 1fr; gap: 8px; }
+  .typekeys .k { font-size: 14px; }
+  #media, .keygrid { grid-auto-columns: minmax(0, 1fr); }
+
+  button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+  @media (max-height: 660px) { .panel { height: 172px; } #keys { --d: 168px; } .k { min-height: 0; } .dock { gap: 10px; } }
+  @media (max-width: 350px) { #keys { grid-template-columns: 1fr; } .keygrid { display: none; } }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<svg style="display:none" aria-hidden="true">
+  <symbol id="i-power" viewBox="0 0 24 24"><path d="M12 3v9"/><path d="M18.4 6.6a9 9 0 1 1-12.8 0"/></symbol>
+  <symbol id="i-playpause" viewBox="0 0 24 24"><path class="fill" d="M3 5.5v13a1 1 0 0 0 1.5.86l10-6.5a1 1 0 0 0 0-1.72l-10-6.5A1 1 0 0 0 3 5.5z"/><path d="M17.5 6v12M21 6v12" stroke-width="2.2"/></symbol>
+  <symbol id="i-prev" viewBox="0 0 24 24"><path class="fill" d="M19 5.5v13a1 1 0 0 1-1.6.8L9 13a1 1 0 0 1 0-1.6l8.4-6.7a1 1 0 0 1 1.6.8z"/><path d="M5 5v14"/></symbol>
+  <symbol id="i-next" viewBox="0 0 24 24"><path class="fill" d="M5 5.5v13a1 1 0 0 0 1.6.8L15 13a1 1 0 0 0 0-1.6L6.6 4.7A1 1 0 0 0 5 5.5z"/><path d="M19 5v14"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></symbol>
+  <symbol id="i-fwd" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></symbol>
+  <symbol id="i-full" viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></symbol>
+  <symbol id="i-voldown" viewBox="0 0 24 24"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 9.5a4 4 0 0 1 0 5"/></symbol>
+  <symbol id="i-volup" viewBox="0 0 24 24"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 9.5a4 4 0 0 1 0 5M18.5 6.5a8 8 0 0 1 0 11"/></symbol>
+  <symbol id="i-mute" viewBox="0 0 24 24"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="m16 9.5 5 5M21 9.5l-5 5"/></symbol>
+  <symbol id="i-up" viewBox="0 0 24 24"><path d="m6 15 6-6 6 6"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-left" viewBox="0 0 24 24"><path d="m15 6-6 6 6 6"/></symbol>
+  <symbol id="i-right" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
+  <symbol id="i-bksp" viewBox="0 0 24 24"><path d="M21 5H9l-6 7 6 7h12a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1z"/><path d="m17 9.5-5 5M12 9.5l5 5"/></symbol>
+  <symbol id="i-enter" viewBox="0 0 24 24"><path d="M9 10l-5 5 5 5"/><path d="M20 4v7a4 4 0 0 1-4 4H4"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24"><path d="M4 12h15M13 6l6 6-6 6"/></symbol>
+  <symbol id="i-switch" viewBox="0 0 24 24"><rect x="2" y="8" width="13" height="11" rx="2"/><path d="M7 8V6a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-5"/></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="m9 9 6 6M15 9l-6 6"/></symbol>
+</svg>
+
+<div id="pad">
+  <div id="core"></div>
+  <div class="label">Touchpad</div>
+  <div id="hint"><span>Slide to move the pointer</span><span>Tap to click</span><span>Two-finger tap to right-click</span><span>Drag the right edge to scroll</span></div>
+  <div id="seam"><svg><use href="#i-up"/></svg><svg><use href="#i-down"/></svg></div>
+  <div id="big"><span class="sub">Connecting to</span><span class="name">your PC…</span></div>
+  <button id="power" aria-label="Shut down PC"><svg><use href="#i-power"/></svg></button>
+</div>
+
+<div class="dock">
+  <div class="clicks">
+    <button data-click="left">Left click</button>
+    <button data-click="right">Right click</button>
+  </div>
+
+  <div class="tabs" role="tablist">
+    <button role="tab" data-tab="type" aria-selected="false">Type</button>
+    <button role="tab" data-tab="media" aria-selected="true">Media</button>
+    <button role="tab" data-tab="keys" aria-selected="false">Keys</button>
+  </div>
+
+  <section class="panel on" id="media">
+    <button class="k" data-key="prevtrack" aria-label="Previous"><svg><use href="#i-prev"/></svg></button>
+    <button class="k solid play" data-key="playpause" aria-label="Play or pause"><svg><use href="#i-playpause"/></svg></button>
+    <button class="k" data-key="nexttrack" aria-label="Next"><svg><use href="#i-next"/></svg></button>
+    <button class="k" data-key="left" aria-label="Rewind"><svg><use href="#i-back"/></svg></button>
+    <button class="k" data-key="f" aria-label="Video fullscreen"><svg><use href="#i-full"/></svg></button>
+    <button class="k" data-key="right" aria-label="Forward"><svg><use href="#i-fwd"/></svg></button>
+    <div class="vol">
+      <button data-key="volumedown" aria-label="Volume down"><svg><use href="#i-voldown"/></svg></button>
+      <button data-key="volumemute" aria-label="Mute"><svg><use href="#i-mute"/></svg></button>
+      <button data-key="volumeup" aria-label="Volume up"><svg><use href="#i-volup"/></svg></button>
+    </div>
+  </section>
+
+  <section class="panel" id="keys">
+    <div class="dpad">
+      <button class="u" data-key="up" aria-label="Up"><svg><use href="#i-up"/></svg></button>
+      <button class="l" data-key="left" aria-label="Left"><svg><use href="#i-left"/></svg></button>
+      <button class="ok solid" data-key="enter">OK</button>
+      <button class="r" data-key="right" aria-label="Right"><svg><use href="#i-right"/></svg></button>
+      <button class="d" data-key="down" aria-label="Down"><svg><use href="#i-down"/></svg></button>
+    </div>
+    <div class="keygrid">
+      <button class="k" data-key="esc">Esc</button>
+      <button class="k" data-key="space">Space</button>
+      <button class="k" data-key="f11">F11</button>
+      <button class="k" data-key="backspace" aria-label="Backspace"><svg><use href="#i-bksp"/></svg></button>
+      <button class="k" data-hotkey="alt,tab" aria-label="Switch app"><svg><use href="#i-switch"/></svg></button>
+      <button class="k" data-hotkey="alt,f4" aria-label="Close app"><svg><use href="#i-close"/></svg></button>
+    </div>
+  </section>
+
+  <section class="panel" id="type">
+    <div class="typerow">
+      <input id="text" placeholder="Type here, اردو bhi chalti hai" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="send">
+      <button id="send" class="solid" aria-label="Send text"><svg><use href="#i-send"/></svg></button>
+    </div>
+    <div class="typekeys">
+      <button class="k" data-key="backspace" aria-label="Backspace"><svg><use href="#i-bksp"/></svg></button>
+      <button class="k" data-key="space">Space</button>
+      <button class="k" data-key="tab">Tab</button>
+      <button class="k" data-key="enter" aria-label="Enter"><svg><use href="#i-enter"/></svg></button>
+      <button class="k" data-key="left" aria-label="Left"><svg><use href="#i-left"/></svg></button>
+      <button class="k" data-key="right" aria-label="Right"><svg><use href="#i-right"/></svg></button>
+      <button class="k" data-key="esc">Esc</button>
+      <button class="k" data-hotkey="ctrl,a">Select all</button>
+    </div>
+  </section>
+</div>
+
+<script>
+// host/key come from the URL (QR code) — or from the phone app, which loads this same page
+const params = new URLSearchParams(location.search);
+const host = params.get("host") || location.host;
+let key = params.get("key") || "";
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} },
+};
+if (key) store.set("br-key:" + host, key); else key = store.get("br-key:" + host) || "";
+
+const big = document.getElementById("big"), hint = document.getElementById("hint");
+let ws, failures = 0, pcName = "your PC";
+
+function setBig(line1, line2) {
+  big.querySelector(".sub").textContent = line1;
+  big.querySelector(".name").textContent = line2;
+}
+
+function connect() {
+  let opened = false;
+  ws = new WebSocket(`ws://${host}/ws?key=${encodeURIComponent(key)}`);
+  ws.onopen = () => { opened = true; failures = 0; setBig("Connected to", pcName); };
+  ws.onmessage = e => {
+    try { const m = JSON.parse(e.data); if (m.t === "hello") { pcName = m.name; setBig("Connected to", pcName); } } catch (_) {}
+  };
+  ws.onclose = () => {
+    if (!opened) failures++;
+    if (failures >= 3) {
+      setBig("Can't reach", "your PC");
+      hint.classList.remove("gone");
+      hint.innerHTML = "<span>Check the phone is on the same Wi-Fi</span><span>and Blanket Remote is running on the PC.</span><span>Made a new key? Scan the new QR code.</span>";
+    } else setBig("Reconnecting to", pcName);
+    setTimeout(connect, failures >= 3 ? 4000 : 1500);
+  };
+}
+function send(obj) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(obj)); }
+connect();
+
+// ---- vibration ----
+// Inside the Blanket Remote app: the app vibrates natively (window.BRApp bridge).
+// In a browser on Android: Vibration API. iPhone has no Vibration API for websites; on iOS 18+
+// toggling a hidden "switch" checkbox gives a light haptic tick, so use that there.
+const inApp = () => typeof window.BRApp !== "undefined" && window.BRApp.postMessage;
+const hapSwitch = (() => {
+  if (navigator.vibrate || inApp()) return null;
+  const label = document.createElement("label"), box = document.createElement("input");
+  box.type = "checkbox"; box.setAttribute("switch", ""); label.setAttribute("aria-hidden", "true");
+  label.style.cssText = "position:fixed;width:1px;height:1px;opacity:0;pointer-events:none;overflow:hidden";
+  label.appendChild(box); document.body.appendChild(label);
+  return label;
+})();
+let lastBuzz = 0;
+const PATTERN = {
+  press: 18,            // any button
+  tap: 22,              // tap-to-click on the touchpad
+  rightTap: [16, 50, 16], // two-finger tap = double pulse
+  drag: 7,              // light tick while sliding the pointer
+  notch: 9,             // each scroll step
+};
+const HAPTIC = { press: "press", tap: "tap", rightTap: "rightTap", drag: "drag", notch: "notch" };
+function buzz(kind = "press", minGap = 0) {
+  const now = performance.now();
+  if (now - lastBuzz < minGap) return;
+  lastBuzz = now;
+  try {
+    if (inApp()) window.BRApp.postMessage(JSON.stringify({ h: kind }));
+    else if (navigator.vibrate) navigator.vibrate(PATTERN[kind] || 18);
+    else if (hapSwitch) hapSwitch.click();
+  } catch (e) {}
+}
+
+// ---- the glow's dark core drifts toward your finger ----
+const pad = document.getElementById("pad"), core = document.getElementById("core");
+const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+let cx, cy, tx, ty, rest = { x: 0, y: 0 }, raf = 0;
+function layoutCore() {
+  const r = pad.getBoundingClientRect(), s = Math.max(r.width, r.height) * 1.2;
+  core.style.width = core.style.height = s + "px";
+  core.style.margin = `${-s / 2}px 0 0 ${-s / 2}px`;
+  rest = { x: r.width * .34, y: r.height * .36 };
+  if (cx === undefined || !raf) { cx = tx = rest.x; cy = ty = rest.y; }
+  core.style.transform = `translate(${cx}px, ${cy}px) rotate(-24deg) scale(.82, 1.18)`;
+}
+let follow = .1;
+function tick() {
+  cx += (tx - cx) * follow; cy += (ty - cy) * follow;
+  core.style.transform = `translate(${cx}px, ${cy}px) rotate(-24deg) scale(.82, 1.18)`;
+  raf = Math.abs(tx - cx) + Math.abs(ty - cy) > .4 ? requestAnimationFrame(tick) : 0;
+}
+// While dragging, the core goes all the way to the finger and runs a little ahead
+// in the direction you're moving; on release it eases back to its resting spot.
+let vx = 0, vy = 0;
+const LEAD = 9, MAX_LEAD = 90;
+function aim(x, y, dragging) {
+  if (still) return;
+  const lx = dragging ? Math.max(-MAX_LEAD, Math.min(MAX_LEAD, vx * LEAD)) : 0;
+  const ly = dragging ? Math.max(-MAX_LEAD, Math.min(MAX_LEAD, vy * LEAD)) : 0;
+  tx = x + lx; ty = y + ly;
+  follow = dragging ? .2 : .08;
+  if (!raf) raf = requestAnimationFrame(tick);
+}
+addEventListener("resize", layoutCore);
+layoutCore();
+
+// ---- Touchpad ----
+const SPEED = 2.5;          // mouse sensitivity
+const SCROLL_STEP = 25;     // px of finger travel per scroll notch
+const SEAM = 46;            // width of the scroll edge
+let lastX = 0, lastY = 0, startT = 0, travel = 0, fingers = 0, mode = "move", tracking = false;
+let accX = 0, accY = 0, accScroll = 0, tickTravel = 0;
+
+if (store.get("br-hint-seen")) hint.classList.add("gone");
+
+function local(t) { const r = pad.getBoundingClientRect(); return [t.clientX - r.left, t.clientY - r.top, r]; }
+
+pad.addEventListener("touchstart", e => {
+  if (e.target.closest("button")) { tracking = false; return; }   // let the power button work
+  e.preventDefault();
+  tracking = true;
+  const t = e.touches[0], [x, y, r] = local(t);
+  if (e.touches.length === 1) {
+    startT = Date.now(); travel = 0; fingers = 1; accScroll = 0; tickTravel = 0; vx = vy = 0;
+    mode = x > r.width - SEAM && y > 70 ? "seam" : "move";
+  }
+  fingers = Math.max(fingers, e.touches.length);
+  if (e.touches.length >= 2 && mode !== "seam") mode = "scroll";
+  pad.classList.toggle("seaming", mode === "seam");
+  lastX = t.clientX; lastY = t.clientY;
+  if (mode !== "seam") aim(x, y, true);
+}, { passive: false });
+
+pad.addEventListener("touchmove", e => {
+  if (!tracking) return;
+  e.preventDefault();
+  const t = e.touches[0];
+  const dx = t.clientX - lastX, dy = t.clientY - lastY;
+  lastX = t.clientX; lastY = t.clientY;
+  travel += Math.abs(dx) + Math.abs(dy);
+  if (travel > 10 && !hint.classList.contains("gone") && failures < 3) { hint.classList.add("gone"); store.set("br-hint-seen", "1"); }
+
+  if (mode === "scroll" || mode === "seam") {
+    accScroll += dy;
+    const n = Math.trunc(accScroll / SCROLL_STEP);
+    if (n) { send({ t: "scroll", n }); accScroll -= n * SCROLL_STEP; buzz(HAPTIC.notch, 45); }
+  } else {
+    vx = vx * .6 + dx * .4; vy = vy * .6 + dy * .4;   // smoothed finger speed
+    const [x, y] = local(t); aim(x, y, true);
+    tickTravel += Math.abs(dx) + Math.abs(dy);
+    if (tickTravel > 80) { tickTravel = 0; buzz(HAPTIC.drag, 70); }
+    accX += dx * SPEED; accY += dy * SPEED;
+    const mx = Math.round(accX), my = Math.round(accY);
+    if (mx || my) { send({ t: "move", dx: mx, dy: my }); accX -= mx; accY -= my; }
+  }
+}, { passive: false });
+
+pad.addEventListener("touchend", e => {
+  if (!tracking) return;
+  e.preventDefault();
+  if (e.touches.length > 0) { lastX = e.touches[0].clientX; lastY = e.touches[0].clientY; return; }
+  tracking = false;
+  pad.classList.remove("seaming");
+  aim(rest.x, rest.y, false);
+  if (mode !== "seam" && travel < 10 && Date.now() - startT < 250) {
+    const right = fingers >= 2;
+    send({ t: "click", b: right ? "right" : "left" }); buzz(right ? HAPTIC.rightTap : HAPTIC.tap);
+  }
+}, { passive: false });
+
+// ---- Buttons ----
+// every button vibrates the moment your finger lands on it, not after you lift it
+document.querySelectorAll("button").forEach(b =>
+  b.addEventListener("pointerdown", () => buzz(HAPTIC.press)));
+document.querySelectorAll("[data-key]").forEach(b =>
+  b.addEventListener("click", () => send({ t: "key", k: b.dataset.key })));
+document.querySelectorAll("[data-click]").forEach(b =>
+  b.addEventListener("click", () => send({ t: "click", b: b.dataset.click })));
+document.querySelectorAll("[data-hotkey]").forEach(b =>
+  b.addEventListener("click", () => send({ t: "hotkey", keys: b.dataset.hotkey.split(",") })));
+
+// ---- Tabs (remembers the last one) ----
+function showTab(name) {
+  document.querySelectorAll("[data-tab]").forEach(b => b.setAttribute("aria-selected", b.dataset.tab === name));
+  document.querySelectorAll(".panel").forEach(p => p.classList.toggle("on", p.id === name));
+  store.set("br-tab", name);
+}
+document.querySelectorAll("[data-tab]").forEach(b => b.addEventListener("click", () => showTab(b.dataset.tab)));
+showTab(store.get("br-tab") || "media");
+
+// ---- Typing ----
+const input = document.getElementById("text");
+function sendText() {
+  if (input.value) { send({ t: "type", text: input.value }); input.value = ""; buzz(HAPTIC.press, 150); }
+}
+document.getElementById("send").addEventListener("click", sendText);
+input.addEventListener("keydown", e => {
+  if (e.key === "Enter") { sendText(); send({ t: "key", k: "enter" }); }
+});
+
+// The app shows its own dialog (WebViews don't show confirm()) and answers via brConfirmed().
+window.brConfirmed = what => { if (what === "shutdown") send({ t: "shutdown" }); };
+document.getElementById("power").addEventListener("click", () => {
+  const text = "Shut down " + pcName + "? It turns off in 5 seconds.";
+  if (inApp()) window.BRApp.postMessage(JSON.stringify({ confirm: "shutdown", text }));
+  else if (confirm(text)) send({ t: "shutdown" });
+});
+</script>
+</body>
+</html>

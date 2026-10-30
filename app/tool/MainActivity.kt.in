@@ -1,0 +1,74 @@
+package __PACKAGE__
+
+import android.content.Context
+import android.os.Build
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
+import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.engine.FlutterEngine
+import io.flutter.plugin.common.MethodChannel
+
+// Bridge used by lib/native.dart: the phone's name (shown in the PC's "Allow?" popup)
+// and real vibration patterns for the remote.
+class MainActivity : FlutterActivity() {
+
+    override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
+        super.configureFlutterEngine(flutterEngine)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "blanketremote/native")
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "model" -> result.success(phoneName())
+                    "haptic" -> {
+                        vibrate(call.argument<String>("kind") ?: "press")
+                        result.success(null)
+                    }
+                    else -> result.notImplemented()
+                }
+            }
+    }
+
+    private fun phoneName(): String {
+        val maker = Build.MANUFACTURER.replaceFirstChar { it.uppercase() }
+        val model = Build.MODEL
+        return if (model.startsWith(maker, ignoreCase = true)) model else "$maker $model"
+    }
+
+    private val vibrator: Vibrator? by lazy {
+        if (Build.VERSION.SDK_INT >= 31) {
+            (getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager)?.defaultVibrator
+        } else {
+            @Suppress("DEPRECATION")
+            getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+        }
+    }
+
+    private fun vibrate(kind: String) {
+        val v = vibrator ?: return
+        if (!v.hasVibrator()) return
+        try {
+            if (Build.VERSION.SDK_INT >= 29) {
+                val effect = when (kind) {
+                    "drag", "notch" -> VibrationEffect.createPredefined(VibrationEffect.EFFECT_TICK)
+                    "tap" -> VibrationEffect.createPredefined(VibrationEffect.EFFECT_HEAVY_CLICK)
+                    "rightTap" -> VibrationEffect.createPredefined(VibrationEffect.EFFECT_DOUBLE_CLICK)
+                    else -> VibrationEffect.createPredefined(VibrationEffect.EFFECT_CLICK)
+                }
+                v.vibrate(effect)
+            } else if (Build.VERSION.SDK_INT >= 26) {
+                val ms = when (kind) {
+                    "drag", "notch" -> 8L
+                    "tap" -> 22L
+                    "rightTap" -> 40L
+                    else -> 18L
+                }
+                v.vibrate(VibrationEffect.createOneShot(ms, VibrationEffect.DEFAULT_AMPLITUDE))
+            } else {
+                @Suppress("DEPRECATION")
+                v.vibrate(18L)
+            }
+        } catch (e: Exception) {
+            // vibration is a nice-to-have; never crash the remote over it
+        }
+    }
+}
