@@ -18,6 +18,7 @@
   .notice { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 14px;
             background: #2a2414; border: 1px solid #4a3d1c; color: #f3d9a4; border-radius: 14px; padding: 14px 18px;
             font-size: 14.5px; line-height: 1.45; }
+  .linkbtn { padding: 2px 10px; font-size: 13px; border-radius: 8px; }
   .notice button { background: #f0b04a; color: #1d1410; border: 0; font-weight: 600; }
   .notice button:hover { background: #f5c06a; }
   .card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 28px;
@@ -95,7 +96,7 @@
 
   <p class="help">
     <span id="helpWin"><b>Phone says "Can't reach the PC"?</b> When Windows asked about the firewall, it needed <b>Allow access</b>.
-    If you clicked Cancel, open Blanket Remote again or allow it in Windows Security → Firewall → Allow an app.<br></span>
+    If you clicked Cancel, or this PC is on a cable (Ethernet), <button class="linkbtn" id="fwfix">fix the firewall</button> — Windows asks for permission once.<br></span>
     <span id="helpMac" hidden><b>Phone connects but nothing moves?</b> Turn on Blanket Remote in System Settings → Privacy &amp; Security → Accessibility.
     If the Mac's firewall asks about incoming connections, click Allow.<br></span>
     You can close this tab — Blanket Remote keeps running. Open the app again to see this page.
@@ -144,6 +145,11 @@ async function refresh() {
   $("pill").className = n ? "pill ok" : "pill";
 }
 
+$("fwfix").onclick = async e => {
+  e.target.disabled = true; e.target.textContent = "waiting for Windows…";
+  await post("/api/fix", { what: "firewall" });
+  e.target.disabled = false; e.target.textContent = "fix the firewall"; refresh();
+};
 $("auto").onchange = async e => { await post("/api/autostart", { on: e.target.checked }); refresh(); };
 $("newkey").onclick = async () => {
   if (!confirm("Make a new key? Every phone will need to scan the new QR code.")) return;

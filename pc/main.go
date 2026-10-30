@@ -45,6 +45,8 @@ type config struct {
 	Port int    `json:"port"` // last port that worked
 	// AutostartSet: start-at-login has been switched on once (or the user chose), so stop forcing it.
 	AutostartSet bool `json:"autostart_set,omitempty"`
+	// FirewallFixed: the one-time Windows Firewall fix has been applied.
+	FirewallFixed bool `json:"firewall_fixed,omitempty"`
 }
 
 var (

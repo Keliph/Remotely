@@ -3,11 +3,16 @@
 package main
 
 import (
+	"encoding/base64"
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
+	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
+	"time"
 	"unicode/utf16"
 	"unsafe"
 )
@@ -199,6 +204,72 @@ func displayName() string {
 	return h
 }
 
-func platformInit()                        {}
-func platformNotices() []map[string]string { return nil }
-func platformFix(what string)              {}
+// ---- Windows Firewall ----
+// Windows often marks a wired (Ethernet) connection as a "Public" network. The firewall popup only
+// allows "Private" by default, so on a Public network the phone is silently blocked.
+
+var onPublicNet atomic.Bool
+
+func platformInit() {
+	go func() {
+		for {
+			out, err := hidden("powershell", "-NoProfile", "-NonInteractive", "-Command",
+				"(Get-NetConnectionProfile).NetworkCategory").Output()
+			onPublicNet.Store(err == nil && strings.Contains(string(out), "Public"))
+			time.Sleep(30 * time.Second)
+		}
+	}()
+}
+
+func platformNotices() []map[string]string {
+	cfgMu.Lock()
+	fixed := cfg.FirewallFixed
+	cfgMu.Unlock()
+	if fixed || !onPublicNet.Load() {
+		return nil
+	}
+	return []map[string]string{{
+		"text":   "Windows has this PC's network set to Public, so the firewall blocks your phone. Click Fix — Windows will ask for permission once.",
+		"action": "firewall",
+		"button": "Fix",
+	}}
+}
+
+// platformFix("firewall") removes any rule Windows made when the popup was dismissed (those block the app)
+// and allows Blanket Remote on every network type. Needs admin, so it asks through one UAC prompt.
+func platformFix(what string) {
+	if what != "firewall" {
+		return
+	}
+	exe, err := os.Executable()
+	if err != nil {
+		return
+	}
+	script := "$exe = '" + strings.ReplaceAll(exe, "'", "''") + "'\n" +
+		"Get-NetFirewallApplicationFilter -ErrorAction SilentlyContinue | Where-Object { $_.Program -ieq $exe } | " +
+		"Get-NetFirewallRule -ErrorAction SilentlyContinue | Remove-NetFirewallRule -ErrorAction SilentlyContinue\n" +
+		"Get-NetFirewallRule -DisplayName 'Blanket Remote' -ErrorAction SilentlyContinue | Remove-NetFirewallRule -ErrorAction SilentlyContinue\n" +
+		"New-NetFirewallRule -DisplayName 'Blanket Remote' -Direction Inbound -Action Allow -Program $exe -Profile Any | Out-Null\n"
+	outer := "Start-Process powershell -Verb RunAs -Wait -WindowStyle Hidden " +
+		"-ArgumentList '-NoProfile','-NonInteractive','-EncodedCommand','" + psEncode(script) + "'"
+	if err := hidden("powershell", "-NoProfile", "-NonInteractive", "-Command", outer).Run(); err != nil {
+		log.Printf("firewall fix not applied: %v", err) // e.g. the UAC prompt was declined
+		return
+	}
+	cfgMu.Lock()
+	cfg.FirewallFixed = true
+	cfgMu.Unlock()
+	saveConfig()
+	log.Printf("firewall rule added for all network types")
+}
+
+// psEncode makes a PowerShell -EncodedCommand argument (base64 of UTF-16LE), which avoids all quoting issues.
+func psEncode(s string) string {
+	u := utf16.Encode([]rune(s))
+	b := make([]byte, len(u)*2)
+	for i, c := range u {
+		b[2*i] = byte(c)
+		b[2*i+1] = byte(c >> 8)
+	}
+	return base64.StdEncoding.EncodeToString(b)
+}
