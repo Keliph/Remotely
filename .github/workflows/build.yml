@@ -1,5 +1,6 @@
-# Builds the Android app (APK) and the Windows PC app (exe) on every push.
-# Download them from the run's page on GitHub: Actions -> latest run -> Artifacts.
+# Builds the Android app (APK), the Windows app (exe) and the Mac app on every push,
+# then puts all three on the repo's Releases page under a fixed "latest" release.
+# If a build fails, its error log is posted as a comment on the commit.
 name: Build
 
 on:
@@ -10,8 +11,11 @@ jobs:
   android:
     name: Android app (APK)
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     defaults:
       run:
+        shell: bash
         working-directory: app
     steps:
       - uses: actions/checkout@v4
@@ -27,29 +31,41 @@ jobs:
           cache: true
 
       - name: Generate Android project files
-        run: flutter create --platforms=android --org pk.blanketremote --project-name blanket_remote .
+        run: flutter create --platforms=android --org pk.blanketremote --project-name blanket_remote . 2>&1 | tee -a "$RUNNER_TEMP/build.log"
 
       - name: Apply Blanket Remote settings (permissions, name, icon, vibration bridge)
-        run: python3 tool/patch_android.py
+        run: python3 tool/patch_android.py 2>&1 | tee -a "$RUNNER_TEMP/build.log"
 
-      - run: flutter pub get
+      - run: flutter pub get 2>&1 | tee -a "$RUNNER_TEMP/build.log"
 
       - name: Unit tests
-        run: flutter test
+        run: flutter test 2>&1 | tee -a "$RUNNER_TEMP/build.log"
 
       - name: Build APK
-        run: flutter build apk --release
+        run: flutter build apk --release 2>&1 | tee -a "$RUNNER_TEMP/build.log"
 
       - uses: actions/upload-artifact@v4
         with:
           name: BlanketRemote-android
           path: app/build/app/outputs/flutter-apk/app-release.apk
 
+      - name: Post the error log on the commit
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          log=$(tail -c 60000 "$RUNNER_TEMP/build.log" 2>/dev/null || echo "no log")
+          gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/comments" \
+            -f body="$(printf '**%s failed**\n\n```\n%s\n```' "$GITHUB_JOB" "$log")" > /dev/null
+
   windows:
     name: PC app (Windows exe)
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     defaults:
       run:
+        shell: bash
         working-directory: pc
     steps:
       - uses: actions/checkout@v4
@@ -58,21 +74,78 @@ jobs:
         with:
           go-version: "1.24"
 
-      - run: go test ./...
+      - run: go test ./... 2>&1 | tee -a "$RUNNER_TEMP/build.log"
 
       - name: Build exe
-        run: GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-H windowsgui -s -w" -o BlanketRemote.exe .
+        run: GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-H windowsgui -s -w" -o BlanketRemote.exe . 2>&1 | tee -a "$RUNNER_TEMP/build.log"
 
       - uses: actions/upload-artifact@v4
         with:
           name: BlanketRemote-windows
           path: pc/BlanketRemote.exe
 
-  # Puts both files on the repo's Releases page under a fixed "latest" release, so there is one
-  # permanent link: https://github.com/<owner>/<repo>/releases/latest/download/BlanketRemote.apk
+      - name: Post the error log on the commit
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          log=$(tail -c 60000 "$RUNNER_TEMP/build.log" 2>/dev/null || echo "no log")
+          gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/comments" \
+            -f body="$(printf '**%s failed**\n\n```\n%s\n```' "$GITHUB_JOB" "$log")" > /dev/null
+
+  mac:
+    name: PC app (Mac)
+    runs-on: macos-latest
+    permissions:
+      contents: write
+    defaults:
+      run:
+        shell: bash
+        working-directory: pc
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+
+      - name: Build for Apple Silicon and Intel Macs
+        run: |
+          mkdir -p build
+          CGO_ENABLED=1 GOOS=darwin GOARCH=arm64 go build -trimpath -ldflags "-s -w" -o build/arm64 . 2>&1 | tee -a "$RUNNER_TEMP/build.log"
+          CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 CC="clang -arch x86_64" go build -trimpath -ldflags "-s -w" -o build/amd64 . 2>&1 | tee -a "$RUNNER_TEMP/build.log"
+          lipo -create -output build/BlanketRemote build/arm64 build/amd64
+          lipo -info build/BlanketRemote | tee -a "$RUNNER_TEMP/build.log"
+
+      - name: Make Blanket Remote.app
+        run: |
+          APP="build/Blanket Remote.app"
+          mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+          cp build/BlanketRemote "$APP/Contents/MacOS/BlanketRemote"
+          cp res/mac/Info.plist "$APP/Contents/Info.plist"
+          iconutil -c icns res/mac/AppIcon.iconset -o "$APP/Contents/Resources/AppIcon.icns" 2>&1 | tee -a "$RUNNER_TEMP/build.log"
+          codesign --force --deep --sign - "$APP" 2>&1 | tee -a "$RUNNER_TEMP/build.log"
+          codesign --verify --verbose "$APP" 2>&1 | tee -a "$RUNNER_TEMP/build.log"
+          cd build && ditto -c -k --keepParent "Blanket Remote.app" BlanketRemote-Mac.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BlanketRemote-mac
+          path: pc/build/BlanketRemote-Mac.zip
+
+      - name: Post the error log on the commit
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          log=$(tail -c 60000 "$RUNNER_TEMP/build.log" 2>/dev/null || echo "no log")
+          gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/comments" \
+            -f body="$(printf '**%s failed**\n\n```\n%s\n```' "$GITHUB_JOB" "$log")" > /dev/null
+
+  # One permanent link per file: https://github.com/<owner>/<repo>/releases/latest/download/<file>
   release:
     name: Publish download links
-    needs: [android, windows]
+    needs: [android, windows, mac]
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
@@ -88,9 +161,10 @@ jobs:
         run: |
           mv out/BlanketRemote-android/app-release.apk BlanketRemote.apk
           mv out/BlanketRemote-windows/BlanketRemote.exe BlanketRemote.exe
+          mv out/BlanketRemote-mac/BlanketRemote-Mac.zip BlanketRemote-Mac.zip
           gh release delete latest --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag || true
-          gh release create latest BlanketRemote.apk BlanketRemote.exe \
+          gh release create latest BlanketRemote.apk BlanketRemote.exe BlanketRemote-Mac.zip \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
             --title "Blanket Remote - latest build" \
-            --notes "Phone: download BlanketRemote.apk on your Android phone and install it. PC: run BlanketRemote.exe on Windows. Built from commit ${GITHUB_SHA::7}."
+            --notes "Phone: BlanketRemote.apk (Android). Windows PC: BlanketRemote.exe. Mac: BlanketRemote-Mac.zip (unzip, move Blanket Remote to Applications, then open it). Built from commit ${GITHUB_SHA::7}."

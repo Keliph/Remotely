@@ -193,3 +193,12 @@ func autostartEnabled() bool {
 	var typ, n uint32
 	return syscall.RegQueryValueEx(h, name, nil, &typ, nil, &n) == nil
 }
+
+func displayName() string {
+	h, _ := os.Hostname()
+	return h
+}
+
+func platformInit()                        {}
+func platformNotices() []map[string]string { return nil }
+func platformFix(what string)              {}

@@ -18,6 +18,8 @@ Needs Go 1.24+. From this folder:
 ## Files
 - `main.go` – config, HTTP + WebSocket server, setup page API, UDP discovery, pairing
 - `platform_windows.go` – real mouse/keyboard (SendInput, Unicode typing), Yes/No popup, start-with-Windows
+- `platform_darwin.go` – Mac: CoreGraphics mouse/keys/typing, media keys, Windows→Mac shortcut mapping, Allow dialog, LaunchAgent, Accessibility check (built on a macOS runner, needs cgo)
+- `res/mac/` – Info.plist and icon for the Mac `.app`
 - `keys.go` – key names → Windows key codes, INPUT structs (sizes pinned by `structs_test.go`)
 - `web/remote.html` – phone UI (also loadable by a phone app: `remote.html?host=IP:PORT&key=KEY`)
 - `web/setup.html` – PC page with QR code and settings (localhost only)

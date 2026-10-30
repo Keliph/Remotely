@@ -15,6 +15,11 @@
   h1 span { color: var(--dim); font-weight: 400; font-size: 14px; margin-left: 8px; }
   .pill { font-size: 13px; padding: 6px 12px; border-radius: 999px; background: #2a2414; color: var(--warn); }
   .pill.ok { background: #14261a; color: var(--ok); }
+  .notice { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 14px;
+            background: #2a2414; border: 1px solid #4a3d1c; color: #f3d9a4; border-radius: 14px; padding: 14px 18px;
+            font-size: 14.5px; line-height: 1.45; }
+  .notice button { background: #f0b04a; color: #1d1410; border: 0; font-weight: 600; }
+  .notice button:hover { background: #f5c06a; }
   .card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 28px;
           display: grid; grid-template-columns: 280px 1fr; gap: 32px; align-items: center; }
   .qr { background: #fff; border-radius: 14px; padding: 14px; aspect-ratio: 1; }
@@ -55,6 +60,8 @@
     <div id="pill" class="pill">Waiting for your phone…</div>
   </header>
 
+  <div id="notices"></div>
+
   <section class="card">
     <div class="qr"><img id="qr" alt="QR code"></div>
     <div>
@@ -73,7 +80,7 @@
 
   <section class="settings">
     <div class="set">
-      <div>Start with Windows<small>Keeps the remote ready every time the PC turns on.</small></div>
+      <div><span id="autoLabel">Start with Windows</span><small>Keeps the remote ready every time the PC turns on.</small></div>
       <label class="switch"><input type="checkbox" id="auto"><span></span></label>
     </div>
     <div class="set">
@@ -87,8 +94,10 @@
   </section>
 
   <p class="help">
-    <b>Phone says "Can't reach the PC"?</b> When Windows asked about the firewall, it needed <b>Allow access</b>.
-    If you clicked Cancel, open Blanket Remote again or allow it in Windows Security → Firewall → Allow an app.<br>
+    <span id="helpWin"><b>Phone says "Can't reach the PC"?</b> When Windows asked about the firewall, it needed <b>Allow access</b>.
+    If you clicked Cancel, open Blanket Remote again or allow it in Windows Security → Firewall → Allow an app.<br></span>
+    <span id="helpMac" hidden><b>Phone connects but nothing moves?</b> Turn on Blanket Remote in System Settings → Privacy &amp; Security → Accessibility.
+    If the Mac's firewall asks about incoming connections, click Allow.<br></span>
     You can close this tab — Blanket Remote keeps running. Open the app again to see this page.
   </p>
 </main>
@@ -97,7 +106,7 @@
 const $ = id => document.getElementById(id);
 const post = (path, body) => fetch(path, { method: "POST", headers: { "X-BR": "1", "Content-Type": "application/json" },
                                           body: JSON.stringify(body || {}) });
-let lastUrl = "";
+let lastUrl = "", lastNotices = "";
 
 async function refresh() {
   let d;
@@ -105,6 +114,24 @@ async function refresh() {
     $("pill").textContent = "Blanket Remote is off"; $("pill").className = "pill"; return;
   }
   $("pcname").textContent = d.name + " · v" + d.version;
+  const mac = d.os === "darwin";
+  $("autoLabel").textContent = mac ? "Start when your Mac turns on" : "Start with Windows";
+  $("helpWin").hidden = mac; $("helpMac").hidden = !mac;
+  const nkey = JSON.stringify(d.notices || []);
+  if (nkey !== lastNotices) {
+    lastNotices = nkey;
+    $("notices").innerHTML = "";
+    (d.notices || []).forEach(n => {
+      const box = document.createElement("div"); box.className = "notice";
+      const t = document.createElement("span"); t.textContent = n.text; box.appendChild(t);
+      if (n.action) {
+        const b = document.createElement("button"); b.textContent = n.button || "Fix";
+        b.onclick = () => post("/api/fix", { what: n.action });
+        box.appendChild(b);
+      }
+      $("notices").appendChild(box);
+    });
+  }
   if (d.url !== lastUrl) {
     lastUrl = d.url; $("qr").src = d.qr; $("url").textContent = d.url;
     $("othersBox").hidden = !d.others || !d.others.length;

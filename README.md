@@ -4,11 +4,19 @@ Control your PC (and soon your smart TV) from your phone.
 
 | Folder | What it is |
 |---|---|
-| `pc/` | Windows app (Go). One `.exe`: serves the remote page, moves the mouse, answers the phone app. See `pc/README.md`. |
+| `pc/` | Computer app (Go) for Windows (`.exe`) and Mac (`.app`): serves the remote page, moves the mouse, answers the phone app. See `pc/README.md`. |
 | `app/` | Phone app (Flutter, Android first). Finds PCs on the Wi-Fi, pairs with one tap, shows the remote. |
 | `tv/` | `tv_test.py` – finds a smart TV on the Wi-Fi and controls it, to test TV support before it goes into the app. |
 
-## Getting the APK and the exe
+## Downloads
+
+Always the newest build:
+
+- Android: https://github.com/Keliph/Remotely/releases/latest/download/BlanketRemote.apk
+- Windows: https://github.com/Keliph/Remotely/releases/latest/download/BlanketRemote.exe
+- Mac: https://github.com/Keliph/Remotely/releases/latest/download/BlanketRemote-Mac.zip
+
+## How the builds work
 
 Every push to GitHub builds both automatically (`.github/workflows/build.yml`):
 

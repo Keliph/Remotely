@@ -3,10 +3,11 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test('saved PC survives a JSON round trip', () {
-    final pc = Pc(id: 'abc123', name: 'DESKTOP-1', ip: '192.168.1.5', port: 47801, key: 'k');
+    final pc = Pc(id: 'abc123', name: 'DESKTOP-1', ip: '192.168.1.5', port: 47801, key: 'k', os: 'darwin');
     final back = Pc.fromJson(pc.toJson())!;
     expect(back.id, 'abc123');
     expect(back.paired, isTrue);
+    expect(back.isMac, isTrue);
     expect(back.remoteUrl, 'http://192.168.1.5:47801/?key=k');
   });
 

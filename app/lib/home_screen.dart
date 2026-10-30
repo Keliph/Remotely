@@ -40,6 +40,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ..ip = f.ip
           ..port = f.port
           ..name = f.name
+          ..os = f.os
           ..online = true;
       } else {
         byId[f.id] = f;
@@ -50,7 +51,10 @@ class _HomeScreenState extends State<HomeScreen> {
       for (final p in byId.values)
         if (!p.online)
           pingPc(p.ip, p.port).then((info) {
-            if (info != null && info['id'] == p.id) p.online = true;
+            if (info != null && info['id'] == p.id) {
+              p.online = true;
+              if (info['os'] is String) p.os = info['os'] as String;
+            }
           }),
     ]);
     await PcStore.save(byId.values);
@@ -182,7 +186,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final name = info['name'] is String ? info['name'] as String : 'PC';
     var pc = _pcs.where((p) => p.id == id).toList().firstOrNullCompat;
     if (pc == null) {
-      pc = Pc(id: id, name: name, ip: host, port: port);
+      pc = Pc(id: id, name: name, ip: host, port: port, os: info['os'] is String ? info['os'] as String : '');
       _pcs.insert(0, pc);
     }
     pc
@@ -293,7 +297,8 @@ class _HomeScreenState extends State<HomeScreen> {
           width: 48,
           height: 48,
           decoration: const BoxDecoration(color: pill, shape: BoxShape.circle),
-          child: Icon(Icons.laptop_windows_rounded, color: pc.online ? ink : ink3, size: 24),
+          child: Icon(pc.isMac ? Icons.laptop_mac_rounded : Icons.laptop_windows_rounded,
+              color: pc.online ? ink : ink3, size: 24),
         ),
         const SizedBox(width: 16),
         Expanded(
@@ -319,7 +324,7 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text('Get your PC ready', style: TextStyle(fontSize: 19, color: ink)),
         SizedBox(height: 10),
-        Text('1. Open Blanket Remote on your PC.', style: TextStyle(fontSize: 15, color: ink2, height: 1.5)),
+        Text('1. Open Blanket Remote on your PC or Mac.', style: TextStyle(fontSize: 15, color: ink2, height: 1.5)),
         Text('2. Keep this phone on the same Wi-Fi.', style: TextStyle(fontSize: 15, color: ink2, height: 1.5)),
         Text('3. Pull down here to search again.', style: TextStyle(fontSize: 15, color: ink2, height: 1.5)),
       ]),

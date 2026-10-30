@@ -16,6 +16,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -42,6 +43,8 @@ type config struct {
 	Key  string `json:"key"`  // secret the phone needs (in the QR / given after pairing)
 	ID   string `json:"id"`   // stable id so the phone app recognises this PC when its IP changes
 	Port int    `json:"port"` // last port that worked
+	// AutostartSet: start-at-login has been switched on once (or the user chose), so stop forcing it.
+	AutostartSet bool `json:"autostart_set,omitempty"`
 }
 
 var (
@@ -73,7 +76,7 @@ func main() {
 	}
 
 	firstRun := loadConfig()
-	hostname, _ = os.Hostname()
+	hostname = displayName()
 
 	// Already running? Just show its page and quit (double-clicking the exe = "open settings").
 	if instanceRunning(cfg.Port) {
@@ -94,12 +97,22 @@ func main() {
 	}
 
 	// Start with Windows: on by default, and refresh the path in case the exe was moved.
-	if firstRun || autostartEnabled() {
+	// On by default until it has worked once (on a Mac it can't while the app runs from Downloads).
+	cfgMu.Lock()
+	wantAuto := firstRun || !cfg.AutostartSet
+	cfgMu.Unlock()
+	if wantAuto || autostartEnabled() {
 		if err := setAutostart(true); err != nil {
 			log.Printf("autostart: %v", err)
+		} else if wantAuto {
+			cfgMu.Lock()
+			cfg.AutostartSet = true
+			cfgMu.Unlock()
+			saveConfig()
 		}
 	}
 
+	platformInit()
 	go discoveryResponder()
 
 	mux := http.NewServeMux()
@@ -113,6 +126,7 @@ func main() {
 	mux.HandleFunc("/api/autostart", localOnly(autostartHandler))
 	mux.HandleFunc("/api/newkey", localOnly(newKeyHandler))
 	mux.HandleFunc("/api/quit", localOnly(quitHandler))
+	mux.HandleFunc("/api/fix", localOnly(fixHandler))
 
 	log.Printf("%s %s on port %d, phone URL %s", appName, version, port, phoneURL())
 
@@ -298,7 +312,7 @@ func pingHandler(w http.ResponseWriter, r *http.Request) {
 	cfgMu.Lock()
 	id := cfg.ID
 	cfgMu.Unlock()
-	writeJSON(w, map[string]any{"app": appName, "v": version, "id": id, "name": hostname})
+	writeJSON(w, map[string]any{"app": appName, "v": version, "id": id, "name": hostname, "os": runtime.GOOS})
 }
 
 func setupInfoHandler(w http.ResponseWriter, r *http.Request) {
@@ -319,6 +333,8 @@ func setupInfoHandler(w http.ResponseWriter, r *http.Request) {
 		"phones":    phones.Load(),
 		"autostart": autostartEnabled(),
 		"version":   version,
+		"os":        runtime.GOOS,
+		"notices":   platformNotices(),
 	})
 }
 
@@ -329,6 +345,10 @@ func autostartHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), 500)
 		return
 	}
+	cfgMu.Lock()
+	cfg.AutostartSet = true
+	cfgMu.Unlock()
+	saveConfig()
 	writeJSON(w, map[string]any{"autostart": autostartEnabled()})
 }
 
@@ -342,6 +362,13 @@ func newKeyHandler(w http.ResponseWriter, r *http.Request) {
 		c.Close() // every phone has to scan/pair again
 	}
 	connsMu.Unlock()
+	writeJSON(w, map[string]any{"ok": true})
+}
+
+func fixHandler(w http.ResponseWriter, r *http.Request) {
+	var body struct{ What string }
+	_ = json.NewDecoder(io.LimitReader(r.Body, 1024)).Decode(&body)
+	platformFix(body.What)
 	writeJSON(w, map[string]any{"ok": true})
 }
 
@@ -390,7 +417,7 @@ func pairHandler(w http.ResponseWriter, r *http.Request) {
 	cfgMu.Lock()
 	id := cfg.ID
 	cfgMu.Unlock()
-	writeJSON(w, map[string]any{"key": currentKey(), "id": id, "name": hostname, "port": port})
+	writeJSON(w, map[string]any{"key": currentKey(), "id": id, "name": hostname, "port": port, "os": runtime.GOOS})
 }
 
 // ---------- WebSocket: the actual remote ----------
@@ -516,7 +543,7 @@ func discoveryResponder() {
 		cfgMu.Lock()
 		id := cfg.ID
 		cfgMu.Unlock()
-		info, _ := json.Marshal(map[string]any{"id": id, "name": hostname, "port": port, "v": version})
+		info, _ := json.Marshal(map[string]any{"id": id, "name": hostname, "port": port, "v": version, "os": runtime.GOOS})
 		_, _ = pc.WriteTo(append([]byte(discoverReply), info...), addr)
 	}
 }

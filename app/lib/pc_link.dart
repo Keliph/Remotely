@@ -15,19 +15,21 @@ const String _ask = 'BLANKETREMOTE?';
 const String _reply = 'BLANKETREMOTE!';
 
 class Pc {
-  Pc({required this.id, required this.name, required this.ip, required this.port, this.key});
+  Pc({required this.id, required this.name, required this.ip, required this.port, this.key, this.os = ''});
 
   final String id; // stable id of the PC, survives IP changes
   String name;
   String ip;
   int port;
   String? key; // given by the PC after the user clicks Yes
+  String os; // 'windows' or 'darwin' (Mac)
   bool online = false;
 
   bool get paired => key != null && key!.isNotEmpty;
+  bool get isMac => os == 'darwin';
   String get remoteUrl => 'http://$ip:$port/?key=${Uri.encodeComponent(key ?? '')}';
 
-  Map<String, dynamic> toJson() => {'id': id, 'name': name, 'ip': ip, 'port': port, 'key': key};
+  Map<String, dynamic> toJson() => {'id': id, 'name': name, 'ip': ip, 'port': port, 'key': key, 'os': os};
 
   static Pc? fromJson(Object? raw) {
     if (raw is! Map) return null;
@@ -36,12 +38,14 @@ class Pc {
     final port = raw['port'];
     final name = raw['name'];
     final key = raw['key'];
+    final os = raw['os'];
     return Pc(
       id: id,
       ip: ip,
       name: name is String ? name : 'PC',
       port: port is int ? port : defaultPcPort,
       key: key is String ? key : null,
+      os: os is String ? os : '',
     );
   }
 }
@@ -101,11 +105,13 @@ Future<List<Pc>> discoverPcs({Duration listen = const Duration(milliseconds: 150
         if (id is! String) return;
         final name = j['name'];
         final port = j['port'];
+        final os = j['os'];
         found[id] = Pc(
           id: id,
           name: name is String ? name : 'PC',
           ip: dg.address.address,
           port: port is int ? port : defaultPcPort,
+          os: os is String ? os : '',
         )..online = true;
       } catch (_) {}
     });

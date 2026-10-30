@@ -1,4 +1,4 @@
-//go:build !windows
+//go:build !windows && !darwin
 
 package main
 
@@ -27,3 +27,12 @@ var testAutostart bool
 
 func setAutostart(on bool) error { testAutostart = on; return nil }
 func autostartEnabled() bool     { return testAutostart }
+
+func displayName() string {
+	h, _ := os.Hostname()
+	return h
+}
+
+func platformInit()                        {}
+func platformNotices() []map[string]string { return nil }
+func platformFix(what string)              {}
