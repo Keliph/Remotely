@@ -41,6 +41,21 @@ jobs:
       - name: Unit tests
         run: flutter test 2>&1 | tee -a "$RUNNER_TEMP/build.log"
 
+      # Every build must be signed with the same key, or Android refuses to install an update over the
+      # app already on the phone ("package appears to be invalid"). The key lives in the repo secret
+      # ANDROID_DEBUG_KEYSTORE (base64 keystore, alias androiddebugkey, password android), never in the code.
+      - name: Use the permanent signing key
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_DEBUG_KEYSTORE }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            mkdir -p ~/.android
+            echo "$KEYSTORE_B64" | base64 -d > ~/.android/debug.keystore
+            keytool -list -keystore ~/.android/debug.keystore -storepass android | grep -i "fingerprint" | tee -a "$RUNNER_TEMP/build.log"
+          else
+            echo "::warning::Secret ANDROID_DEBUG_KEYSTORE is missing - this APK uses a temporary key and won't install over an earlier one"
+          fi
+
       - name: Build APK
         run: flutter build apk --release 2>&1 | tee -a "$RUNNER_TEMP/build.log"
 
