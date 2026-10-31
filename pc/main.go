@@ -16,6 +16,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"sync"
@@ -151,7 +152,9 @@ func main() {
 			openBrowser(setupURL(port))
 		}()
 	}
-	log.Fatal(http.Serve(ln, mux))
+	srv := &http.Server{Handler: mux, ReadHeaderTimeout: 10 * time.Second}
+	srv.SetKeepAlivesEnabled(false) // every page/API request gets its own connection (see pageBytes)
+	log.Fatal(srv.Serve(ln))
 }
 
 // ---------- config ----------
@@ -267,11 +270,39 @@ func servePage(name string, local bool) http.HandlerFunc {
 			http.Error(w, "Open this page on the PC itself.", http.StatusForbidden)
 			return
 		}
-		b, _ := webFS.ReadFile(name)
+		b := pageBytes(name)
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.Header().Set("Cache-Control", "no-store")
 		_, _ = w.Write(b)
 	}
+}
+
+var (
+	pageMu    sync.Mutex
+	pageCache = map[string][]byte{}
+	fontRef   = regexp.MustCompile(`url\(/fonts/([a-z0-9-]+\.woff2)\)`)
+)
+
+// pageBytes returns a page with its fonts embedded as data: URLs, so the phone loads everything in one
+// request. Safari on iOS 26 fails a WebSocket that opens while other requests to the same server are
+// still loading (WebKit bug 302823) — with one request there's nothing left loading when it connects.
+func pageBytes(name string) []byte {
+	pageMu.Lock()
+	defer pageMu.Unlock()
+	if b, ok := pageCache[name]; ok {
+		return b
+	}
+	src, _ := webFS.ReadFile(name)
+	out := fontRef.ReplaceAllFunc(src, func(m []byte) []byte {
+		file := string(fontRef.FindSubmatch(m)[1])
+		data, err := webFS.ReadFile("web/fonts/" + file)
+		if err != nil {
+			return m
+		}
+		return []byte("url(data:font/woff2;base64," + base64.StdEncoding.EncodeToString(data) + ")")
+	})
+	pageCache[name] = out
+	return out
 }
 
 // fontHandler serves the bundled font so the phone page looks right even without internet.

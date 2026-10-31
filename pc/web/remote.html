@@ -279,7 +279,7 @@ function dial(targets, ms) {
   });
 }
 
-let toldApp = false;
+let toldApp = false, everConnected = false;
 async function connect() {
   const targets = [host];
   if (backup && backup !== host) targets.push(backup);
@@ -288,6 +288,9 @@ async function connect() {
     sock = await dial(targets, 4000);
   } catch (e) {
     failures++;
+    // Safari on iOS 26 can keep failing WebSockets after a bad first try (WebKit bug 302823) while
+    // normal requests work; a page reload clears it. Do that once by itself, as a refresh would.
+    if (!inApp() && (failures === 2 || !everConnected)) reloadIfPcAnswers();
     if (failures >= 3) {
       setBig("Can't reach", pcName);
       hint.classList.remove("gone");
@@ -299,6 +302,8 @@ async function connect() {
     return;
   }
   ws = sock;
+  everConnected = true;
+  try { sessionStorage.removeItem("br-reloaded"); } catch (e) {}
   if (failures >= 3) hint.classList.add("gone");
   failures = 0; toldApp = false;
   setBig("Connected to", pcName);
@@ -313,6 +318,16 @@ async function connect() {
     } catch (_) {}
   };
   ws.onclose = () => { setBig("Reconnecting to", pcName); setTimeout(connect, 500); };
+}
+
+async function reloadIfPcAnswers() {
+  try {
+    if (sessionStorage.getItem("br-reloaded")) return;
+    const r = await fetch("/api/ping", { cache: "no-store" });
+    if (!r.ok) return;
+    sessionStorage.setItem("br-reloaded", "1");
+    location.reload();
+  } catch (e) {}
 }
 
 // Opened from the QR code, the address is the PC's IP, which can change after a restart. If this phone
@@ -333,7 +348,9 @@ function usePermanentName(local, port, ip) {
   probe.onclose = () => clearTimeout(giveUp);
 }
 function send(obj) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(obj)); }
-connect();
+// Connect once the page has completely finished loading (see the iOS 26 note in connect()).
+if (document.readyState === "complete") setTimeout(connect, 30);
+else addEventListener("load", () => setTimeout(connect, 30), { once: true });
 
 // ---- vibration ----
 // Inside the Blanket Remote app: the app vibrates natively (window.BRApp bridge).
