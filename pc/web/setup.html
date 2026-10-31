@@ -114,7 +114,7 @@ async function refresh() {
   try { d = await (await fetch("/api/setup")).json(); } catch (e) {
     $("pill").textContent = "Blanket Remote is off"; $("pill").className = "pill"; return;
   }
-  $("pcname").textContent = d.name + " · v" + d.version;
+  $("pcname").textContent = d.name + " · v" + d.version + (d.build ? " (" + d.build + ")" : "");
   const mac = d.os === "darwin";
   $("autoLabel").textContent = mac ? "Start when your Mac turns on" : "Start with Windows";
   $("helpWin").hidden = mac; $("helpMac").hidden = !mac;

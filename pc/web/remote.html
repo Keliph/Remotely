@@ -251,81 +251,31 @@ function setBig(line1, line2) {
   big.querySelector(".name").textContent = line2;
 }
 
-// Opens a WebSocket to every target at once; resolves with the first that connects. Gives up after
-// `ms` (a connection attempt that hangs is abandoned and retried, like pressing refresh).
-function dial(targets, ms) {
-  return new Promise((resolve, reject) => {
-    let left = targets.length, done = false;
-    const all = [];
-    const finish = s => {
-      done = true; clearTimeout(timer);
-      all.forEach(o => { if (o !== s) { o.onclose = null; o.close(); } });
-      s ? resolve(s) : reject(new Error("unreachable"));
-    };
-    const timer = setTimeout(() => { if (!done) finish(null); }, ms);
-    for (const t of targets) {
-      let s;
-      try { s = new WebSocket(`ws://${t}/ws?key=${encodeURIComponent(key)}`); } catch (e) { left--; continue; }
-      all.push(s);
-      s.onopen = () => { if (done) { s.close(); return; } s.onclose = null; finish(s); };
-      s.onclose = () => { if (--left <= 0 && !done) finish(null); };
-    }
-    if (all.length === 0 && !done) finish(null);
-  });
-}
-
-let toldApp = false, everConnected = false;
-async function connect() {
-  const targets = [host];
-  let sock;
-  try {
-    sock = await dial(targets, 4000);
-  } catch (e) {
-    failures++;
-    // Safari on iOS 26 can keep failing WebSockets after a bad first try (WebKit bug 302823) while
-    // normal requests work; a page reload clears it. Do that once by itself, as a refresh would.
-    if (!inApp() && (failures === 2 || !everConnected)) reloadIfPcAnswers();
+let toldApp = false;
+function connect() {
+  let opened = false;
+  ws = new WebSocket(`ws://${host}/ws?key=${encodeURIComponent(key)}`);
+  ws.onopen = () => {
+    if (failures >= 3) hint.classList.add("gone");
+    opened = true; failures = 0; toldApp = false; setBig("Connected to", pcName);
+  };
+  ws.onmessage = e => {
+    try { const m = JSON.parse(e.data); if (m.t === "hello") { pcName = m.name; setBig("Connected to", pcName); } } catch (_) {}
+  };
+  ws.onclose = () => {
+    if (!opened) failures++;
     if (failures >= 3) {
       setBig("Can't reach", pcName);
       hint.classList.remove("gone");
       hint.innerHTML = "<span>Check the phone is on the same Wi-Fi</span><span>and Blanket Remote is running on the PC.</span><span>It connects by itself as soon as the PC is back.</span>";
-      // In the app: let it look for the PC (its address may have changed) and reload this page.
+      // In the app only: let it look for the PC (its address may have changed) and reload this page.
       if (!toldApp && inApp()) { toldApp = true; window.BRApp.postMessage(JSON.stringify({ lost: true })); }
     } else setBig("Reconnecting to", pcName);
-    setTimeout(connect, failures >= 3 ? 3000 : 800);
-    return;
-  }
-  ws = sock;
-  everConnected = true;
-  try { sessionStorage.removeItem("br-reloaded"); } catch (e) {}
-  if (failures >= 3) hint.classList.add("gone");
-  failures = 0; toldApp = false;
-  setBig("Connected to", pcName);
-  ws.onmessage = e => {
-    try {
-      const m = JSON.parse(e.data);
-      if (m.t !== "hello") return;
-      pcName = m.name;
-      setBig("Connected to", pcName);
-    } catch (_) {}
+    setTimeout(connect, failures >= 3 ? 4000 : 1500);
   };
-  ws.onclose = () => { setBig("Reconnecting to", pcName); setTimeout(connect, 500); };
 }
-
-async function reloadIfPcAnswers() {
-  try {
-    if (sessionStorage.getItem("br-reloaded")) return;
-    const r = await fetch("/api/ping", { cache: "no-store" });
-    if (!r.ok) return;
-    sessionStorage.setItem("br-reloaded", "1");
-    location.reload();
-  } catch (e) {}
-}
-
 function send(obj) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(obj)); }
-// Connect once the page has completely finished loading (see the iOS 26 note in connect()).
-if (document.readyState === "complete") setTimeout(connect, 30);
-else addEventListener("load", () => setTimeout(connect, 30), { once: true });
+connect();
 
 // ---- vibration ----
 // Inside the Blanket Remote app: the app vibrates natively (window.BRApp bridge).

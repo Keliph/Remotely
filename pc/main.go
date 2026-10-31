@@ -16,7 +16,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"regexp"
 	"runtime"
 	"strings"
 	"sync"
@@ -36,6 +35,10 @@ const (
 	discoverAsk   = "BLANKETREMOTE?"
 	discoverReply = "BLANKETREMOTE!"
 )
+
+// build is the commit this exe was built from (set by the cloud build), shown on the PC page so it's
+// easy to see which version is running.
+var build = "dev"
 
 //go:embed web/remote.html web/setup.html web/fonts/*.woff2
 var webFS embed.FS
@@ -82,9 +85,21 @@ func main() {
 	hostname = displayName()
 
 	// Already running? Just show its page and quit (double-clicking the exe = "open settings").
-	if instanceRunning(cfg.Port) {
-		openBrowser(setupURL(cfg.Port))
-		return
+	// Already running? Same version: just show its page (double-clicking the exe = "open settings").
+	// Older or different version (e.g. you just downloaded an update): close it and take over.
+	if other, running := runningBuild(cfg.Port); running {
+		if other == build {
+			openBrowser(setupURL(cfg.Port))
+			return
+		}
+		log.Printf("replacing running build %q with %q", other, build)
+		askToQuit(cfg.Port)
+		for i := 0; i < 50; i++ {
+			if _, still := runningBuild(cfg.Port); !still {
+				break
+			}
+			time.Sleep(100 * time.Millisecond)
+		}
 	}
 
 	ln, p := listen(cfg.Port)
@@ -132,7 +147,7 @@ func main() {
 	mux.HandleFunc("/api/quit", localOnly(quitHandler))
 	mux.HandleFunc("/api/fix", localOnly(fixHandler))
 
-	log.Printf("%s %s on port %d, phone URL %s", appName, version, port, phoneURL())
+	log.Printf("%s %s (build %s) on port %d, phone URL %s", appName, version, build, port, phoneURL())
 
 	// nudge the mouse so Windows shows the cursor right away
 	moveMouse(1, 0)
@@ -144,9 +159,7 @@ func main() {
 			openBrowser(setupURL(port))
 		}()
 	}
-	srv := &http.Server{Handler: mux, ReadHeaderTimeout: 10 * time.Second}
-	srv.SetKeepAlivesEnabled(false) // every page/API request gets its own connection (see pageBytes)
-	log.Fatal(srv.Serve(ln))
+	log.Fatal(http.Serve(ln, mux))
 }
 
 // ---------- config ----------
@@ -192,15 +205,33 @@ func currentKey() string {
 
 // ---------- startup helpers ----------
 
-func instanceRunning(p int) bool {
+// runningBuild reports whether Blanket Remote already runs on this port, and which build it is
+// ("" for versions from before builds were stamped).
+func runningBuild(p int) (string, bool) {
 	c := http.Client{Timeout: 700 * time.Millisecond}
 	r, err := c.Get(fmt.Sprintf("http://127.0.0.1:%d/api/ping", p))
 	if err != nil {
-		return false
+		return "", false
 	}
 	defer r.Body.Close()
-	b, _ := io.ReadAll(io.LimitReader(r.Body, 512))
-	return strings.Contains(string(b), appName)
+	var info struct {
+		App   string `json:"app"`
+		Build string `json:"build"`
+	}
+	if json.NewDecoder(io.LimitReader(r.Body, 2048)).Decode(&info) != nil || info.App != appName {
+		return "", false
+	}
+	return info.Build, true
+}
+
+func askToQuit(p int) {
+	req, _ := http.NewRequest(http.MethodPost, fmt.Sprintf("http://127.0.0.1:%d/api/quit", p), strings.NewReader("{}"))
+	req.Header.Set("X-BR", "1")
+	req.Header.Set("Content-Type", "application/json")
+	c := http.Client{Timeout: 2 * time.Second}
+	if r, err := c.Do(req); err == nil {
+		r.Body.Close()
+	}
 }
 
 func listen(preferred int) (net.Listener, int) {
@@ -262,39 +293,11 @@ func servePage(name string, local bool) http.HandlerFunc {
 			http.Error(w, "Open this page on the PC itself.", http.StatusForbidden)
 			return
 		}
-		b := pageBytes(name)
+		b, _ := webFS.ReadFile(name)
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.Header().Set("Cache-Control", "no-store")
 		_, _ = w.Write(b)
 	}
-}
-
-var (
-	pageMu    sync.Mutex
-	pageCache = map[string][]byte{}
-	fontRef   = regexp.MustCompile(`url\(/fonts/([a-z0-9-]+\.woff2)\)`)
-)
-
-// pageBytes returns a page with its fonts embedded as data: URLs, so the phone loads everything in one
-// request. Safari on iOS 26 fails a WebSocket that opens while other requests to the same server are
-// still loading (WebKit bug 302823) — with one request there's nothing left loading when it connects.
-func pageBytes(name string) []byte {
-	pageMu.Lock()
-	defer pageMu.Unlock()
-	if b, ok := pageCache[name]; ok {
-		return b
-	}
-	src, _ := webFS.ReadFile(name)
-	out := fontRef.ReplaceAllFunc(src, func(m []byte) []byte {
-		file := string(fontRef.FindSubmatch(m)[1])
-		data, err := webFS.ReadFile("web/fonts/" + file)
-		if err != nil {
-			return m
-		}
-		return []byte("url(data:font/woff2;base64," + base64.StdEncoding.EncodeToString(data) + ")")
-	})
-	pageCache[name] = out
-	return out
 }
 
 // fontHandler serves the bundled font so the phone page looks right even without internet.
@@ -346,7 +349,7 @@ func pingHandler(w http.ResponseWriter, r *http.Request) {
 	cfgMu.Lock()
 	id := cfg.ID
 	cfgMu.Unlock()
-	writeJSON(w, map[string]any{"app": appName, "v": version, "id": id, "name": hostname, "os": runtime.GOOS})
+	writeJSON(w, map[string]any{"app": appName, "v": version, "build": build, "id": id, "name": hostname, "os": runtime.GOOS})
 }
 
 // authHandler lets the phone app check in one request that a remembered address is still the
@@ -377,6 +380,7 @@ func setupInfoHandler(w http.ResponseWriter, r *http.Request) {
 		"phones":    phones.Load(),
 		"autostart": autostartEnabled(),
 		"version":   version,
+		"build":     build,
 		"os":        runtime.GOOS,
 		"notices":   platformNotices(),
 	})
