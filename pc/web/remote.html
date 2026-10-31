@@ -251,22 +251,43 @@ function setBig(line1, line2) {
   big.querySelector(".name").textContent = line2;
 }
 
+// Backup route: the PC's last known IP. On the permanent-name page, the name is tried and the IP at the
+// same time, and whichever answers first wins, so a slow .local lookup never leaves the page stuck.
+const isIP = h => /^\d+\.\d+\.\d+\.\d+$/.test(h);
+let backup = isIP(location.hostname) ? "" : (store.get("br-ip:" + location.host) || params.get("ip") || "");
+
+// Opens a WebSocket to every target at once; resolves with the first that connects. Gives up after
+// `ms` (a connection attempt that hangs is abandoned and retried, like pressing refresh).
+function dial(targets, ms) {
+  return new Promise((resolve, reject) => {
+    let left = targets.length, done = false;
+    const all = [];
+    const finish = s => {
+      done = true; clearTimeout(timer);
+      all.forEach(o => { if (o !== s) { o.onclose = null; o.close(); } });
+      s ? resolve(s) : reject(new Error("unreachable"));
+    };
+    const timer = setTimeout(() => { if (!done) finish(null); }, ms);
+    for (const t of targets) {
+      let s;
+      try { s = new WebSocket(`ws://${t}/ws?key=${encodeURIComponent(key)}`); } catch (e) { left--; continue; }
+      all.push(s);
+      s.onopen = () => { if (done) { s.close(); return; } s.onclose = null; finish(s); };
+      s.onclose = () => { if (--left <= 0 && !done) finish(null); };
+    }
+    if (all.length === 0 && !done) finish(null);
+  });
+}
+
 let toldApp = false;
-function connect() {
-  let opened = false;
-  ws = new WebSocket(`ws://${host}/ws?key=${encodeURIComponent(key)}`);
-  ws.onopen = () => {
-    if (failures >= 3) hint.classList.add("gone");
-    opened = true; failures = 0; toldApp = false; setBig("Connected to", pcName);
-  };
-  ws.onmessage = e => {
-    try {
-      const m = JSON.parse(e.data);
-      if (m.t === "hello") { pcName = m.name; setBig("Connected to", pcName); usePermanentName(m.local, m.port); }
-    } catch (_) {}
-  };
-  ws.onclose = () => {
-    if (!opened) failures++;
+async function connect() {
+  const targets = [host];
+  if (backup && backup !== host) targets.push(backup);
+  let sock;
+  try {
+    sock = await dial(targets, 4000);
+  } catch (e) {
+    failures++;
     if (failures >= 3) {
       setBig("Can't reach", pcName);
       hint.classList.remove("gone");
@@ -274,25 +295,42 @@ function connect() {
       // In the app: let it look for the PC (its address may have changed) and reload this page.
       if (!toldApp && inApp()) { toldApp = true; window.BRApp.postMessage(JSON.stringify({ lost: true })); }
     } else setBig("Reconnecting to", pcName);
-    setTimeout(connect, failures >= 3 ? 4000 : 1500);
+    setTimeout(connect, failures >= 3 ? 3000 : 800);
+    return;
+  }
+  ws = sock;
+  if (failures >= 3) hint.classList.add("gone");
+  failures = 0; toldApp = false;
+  setBig("Connected to", pcName);
+  ws.onmessage = e => {
+    try {
+      const m = JSON.parse(e.data);
+      if (m.t !== "hello") return;
+      pcName = m.name;
+      setBig("Connected to", pcName);
+      if (m.ip && !isIP(location.hostname)) { backup = m.ip; store.set("br-ip:" + location.host, m.ip); }
+      usePermanentName(m.local, m.port, m.ip);
+    } catch (_) {}
   };
+  ws.onclose = () => { setBig("Reconnecting to", pcName); setTimeout(connect, 500); };
 }
 
 // Opened from the QR code, the address is the PC's IP, which can change after a restart. If this phone
 // understands .local names (iPhone Safari does), switch to the PC's permanent name, so "Add to Home
-// Screen" saves a link that keeps working.
-function usePermanentName(local, port) {
+// Screen" saves a link that keeps working. Only switches once the name has fully worked end to end.
+function usePermanentName(local, port, ip) {
   if (!local || inApp() || location.hostname === local) return;
-  if (!/^\d+\.\d+\.\d+\.\d+$/.test(location.hostname) || location.hostname.startsWith("127.")) return;
+  if (!isIP(location.hostname) || location.hostname.startsWith("127.")) return;
   const target = `${local}:${port || location.port}`;
   let probe;
   try { probe = new WebSocket(`ws://${target}/ws?key=${encodeURIComponent(key)}`); } catch (e) { return; }
-  const giveUp = setTimeout(() => probe.close(), 3000);
-  probe.onopen = () => {
+  const giveUp = setTimeout(() => probe.close(), 4000);
+  probe.onmessage = () => {
     clearTimeout(giveUp); probe.close();
-    location.replace(`http://${target}/?key=${encodeURIComponent(key)}`);
+    const backupIP = ip || location.host;
+    location.replace(`http://${target}/?key=${encodeURIComponent(key)}&ip=${encodeURIComponent(backupIP)}`);
   };
-  probe.onerror = () => clearTimeout(giveUp);
+  probe.onclose = () => clearTimeout(giveUp);
 }
 function send(obj) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(obj)); }
 connect();

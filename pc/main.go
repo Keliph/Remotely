@@ -491,7 +491,12 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("phone disconnected %s", r.RemoteAddr)
 	}()
 
-	_ = c.WriteJSON(map[string]any{"t": "hello", "name": hostname, "v": version, "local": localName, "port": port})
+	// "ip": the address this phone reached us on, so the page has a backup route if the .local name is slow
+	ipSeen := ""
+	if la, ok := r.Context().Value(http.LocalAddrContextKey).(net.Addr); ok {
+		ipSeen = la.String()
+	}
+	_ = c.WriteJSON(map[string]any{"t": "hello", "name": hostname, "v": version, "local": localName, "port": port, "ip": ipSeen})
 
 	for {
 		_, msg, err := c.ReadMessage()
