@@ -79,12 +79,26 @@
            box-shadow: inset 0 1px 0 rgba(255, 255, 255, .4); }
   #power:active { background: rgba(255, 255, 255, .38); }
   #power svg { width: 21px; height: 21px; }
-  /* right edge: drag it with one finger to scroll */
+  /* right edge: the scroll bubble. Drag it toward the arrows to scroll; it springs back to the middle. */
   #seam { position: absolute; z-index: 3; right: 0; top: 76px; bottom: 22px; width: 46px; pointer-events: none;
           display: flex; flex-direction: column; align-items: center; justify-content: space-between; color: var(--ink-2); }
-  #seam::before { content: ""; position: absolute; top: 26px; bottom: 26px; left: 50%; border-left: 1.5px dashed rgba(255, 255, 255, .45); }
-  #seam svg { width: 18px; height: 18px; }
-  #pad.seaming #seam::before { border-left-color: #fff; }
+  #seam::before { content: ""; position: absolute; top: 28px; bottom: 28px; left: 50%; width: 3px; margin-left: -1.5px;
+                  border-radius: 2px; background: rgba(255, 255, 255, .26); transition: background .2s; }
+  #seam > svg { width: 18px; height: 18px; opacity: .8; transition: opacity .2s, transform .2s; }
+  #pad.seaming #seam::before { background: rgba(255, 255, 255, .5); }
+  #pad.seaming #seam > svg { opacity: 1; }
+  #pad.seam-up #seam > svg:first-of-type, #pad.seam-down #seam > svg:last-of-type { transform: scale(1.25); color: #fff; }
+  #knob { position: absolute; left: 50%; top: 50%; width: 34px; height: 34px; margin: -17px 0 0 -17px; border-radius: 50%;
+          display: grid; place-items: center; color: rgba(110, 58, 20, .8);
+          background: radial-gradient(120% 120% at 30% 25%, rgba(255, 255, 255, .55), rgba(255, 255, 255, .22) 60%, rgba(255, 255, 255, .14));
+          -webkit-backdrop-filter: blur(14px) saturate(1.7); backdrop-filter: blur(14px) saturate(1.7);
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, .7), inset 0 -1px 1px rgba(120, 60, 10, .12),
+                      0 6px 18px rgba(90, 36, 0, .25), 0 1px 3px rgba(90, 36, 0, .2);
+          transition: transform .55s cubic-bezier(.2, 1.6, .35, 1), box-shadow .2s;
+          will-change: transform; }
+  #knob svg { width: 16px; height: 16px; stroke-width: 2.2; }
+  #pad.seaming #knob { transition: box-shadow .2s;
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, .8), 0 10px 26px rgba(90, 36, 0, .3), 0 0 0 6px rgba(255, 255, 255, .12); }
 
   /* ---- frosted dock ---- */
   .dock { display: flex; flex-direction: column; gap: 9px; padding: 11px; border-radius: 34px;
@@ -175,6 +189,7 @@
   <symbol id="i-mute" viewBox="0 0 24 24"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="m16 9.5 5 5M21 9.5l-5 5"/></symbol>
   <symbol id="i-up" viewBox="0 0 24 24"><path d="m6 15 6-6 6 6"/></symbol>
   <symbol id="i-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-updown" viewBox="0 0 24 24"><path d="m8 9.5 4-4 4 4M8 14.5l4 4 4-4"/></symbol>
   <symbol id="i-left" viewBox="0 0 24 24"><path d="m15 6-6 6 6 6"/></symbol>
   <symbol id="i-right" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
   <symbol id="i-bksp" viewBox="0 0 24 24"><path d="M21 5H9l-6 7 6 7h12a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1z"/><path d="m17 9.5-5 5M12 9.5l5 5"/></symbol>
@@ -193,8 +208,8 @@
 <div id="pad">
   <div id="core"></div>
   <div class="label">Touchpad</div>
-  <div id="hint"><span>Slide to move the pointer</span><span>Tap to click</span><span>Two-finger tap to right-click</span><span>Drag the right edge to scroll</span></div>
-  <div id="seam"><svg><use href="#i-up"/></svg><svg><use href="#i-down"/></svg></div>
+  <div id="hint"><span>Slide to move the pointer</span><span>Tap to click</span><span>Two-finger tap to right-click</span><span>Drag the bubble on the right to scroll</span></div>
+  <div id="seam"><svg><use href="#i-up"/></svg><div id="knob"><svg><use href="#i-updown"/></svg></div><svg><use href="#i-down"/></svg></div>
   <div id="big"><span class="sub">Connecting to</span><span class="name">your PC…</span></div>
   <button id="power" aria-label="Shut down PC"><svg><use href="#i-power"/></svg></button>
 </div>
@@ -413,6 +428,44 @@ const SEAM = 46;            // width of the scroll edge
 let lastX = 0, lastY = 0, startT = 0, travel = 0, fingers = 0, mode = "move", tracking = false;
 let accX = 0, accY = 0, accScroll = 0, tickTravel = 0;
 
+// ---- Scroll bubble: works like a scroll wheel. Moving it a little scrolls a little; holding it at
+// either end keeps scrolling (faster the longer you hold); letting go springs it back to the middle.
+const knob = document.getElementById("knob"), seam = document.getElementById("seam");
+let knobOff = 0, knobStartY = 0, repeatTimer = 0, repeatDir = 0, repeatGap = 0;
+function knobRange() { return Math.max(0, seam.clientHeight / 2 - 44); }
+function placeKnob(pressed) { knob.style.transform = `translateY(${knobOff}px) scale(${pressed ? 1.14 : 1})`; }
+function scrollBy(notches) {
+  if (!notches) return;
+  send({ t: "scroll", n: -notches });      // bubble toward the down arrow = page scrolls down
+  buzz(HAPTIC.notch, 45);
+}
+function stopRepeat() { clearTimeout(repeatTimer); repeatTimer = 0; repeatDir = 0; }
+function repeatTick() {
+  scrollBy(repeatDir);
+  repeatGap = Math.max(60, repeatGap * 0.85);   // speeds up while held
+  repeatTimer = setTimeout(repeatTick, repeatGap);
+}
+function knobGrab(y) {
+  stopRepeat(); knobStartY = y - knobOff; placeKnob(true);
+  buzz(HAPTIC.press);
+}
+function knobMove(y) {
+  const max = knobRange();
+  knobOff = Math.max(-max, Math.min(max, y - knobStartY));
+  placeKnob(true);
+  const dir = max > 0 && Math.abs(knobOff) >= max * 0.92 ? Math.sign(knobOff) : 0;
+  pad.classList.toggle("seam-up", knobOff < -6);
+  pad.classList.toggle("seam-down", knobOff > 6);
+  if (dir !== repeatDir) {
+    stopRepeat();
+    if (dir) { repeatDir = dir; repeatGap = 110; repeatTimer = setTimeout(repeatTick, 320); }
+  }
+}
+function knobRelease() {
+  stopRepeat(); knobOff = 0; placeKnob(false);
+  pad.classList.remove("seam-up", "seam-down");
+}
+
 if (store.get("br-hint-seen")) hint.classList.add("gone");
 
 function local(t) { const r = pad.getBoundingClientRect(); return [t.clientX - r.left, t.clientY - r.top, r]; }
@@ -430,7 +483,7 @@ pad.addEventListener("touchstart", e => {
   if (e.touches.length >= 2 && mode !== "seam") mode = "scroll";
   pad.classList.toggle("seaming", mode === "seam");
   lastX = t.clientX; lastY = t.clientY;
-  if (mode !== "seam") aim(x, y, true);
+  if (mode === "seam") knobGrab(t.clientY); else aim(x, y, true);
 }, { passive: false });
 
 pad.addEventListener("touchmove", e => {
@@ -442,7 +495,12 @@ pad.addEventListener("touchmove", e => {
   travel += Math.abs(dx) + Math.abs(dy);
   if (travel > 10 && !hint.classList.contains("gone") && failures < 3) { hint.classList.add("gone"); store.set("br-hint-seen", "1"); }
 
-  if (mode === "scroll" || mode === "seam") {
+  if (mode === "seam") {
+    knobMove(t.clientY);
+    accScroll += dy;                                   // every bit of finger travel turns the wheel
+    const n = Math.trunc(accScroll / SCROLL_STEP);
+    if (n) { scrollBy(n); accScroll -= n * SCROLL_STEP; }
+  } else if (mode === "scroll") {
     accScroll += dy;
     const n = Math.trunc(accScroll / SCROLL_STEP);
     if (n) { send({ t: "scroll", n }); accScroll -= n * SCROLL_STEP; buzz(HAPTIC.notch, 45); }
@@ -463,12 +521,22 @@ pad.addEventListener("touchend", e => {
   if (e.touches.length > 0) { lastX = e.touches[0].clientX; lastY = e.touches[0].clientY; return; }
   tracking = false;
   pad.classList.remove("seaming");
+  if (mode === "seam") knobRelease();
   aim(rest.x, rest.y, false);
   if (mode !== "seam" && travel < 10 && Date.now() - startT < 250) {
     const right = fingers >= 2;
     send({ t: "click", b: right ? "right" : "left" }); buzz(right ? HAPTIC.rightTap : HAPTIC.tap);
   }
 }, { passive: false });
+
+// a system gesture can take the touch away: put everything back
+pad.addEventListener("touchcancel", () => {
+  if (!tracking) return;
+  tracking = false;
+  pad.classList.remove("seaming");
+  if (mode === "seam") knobRelease();
+  aim(rest.x, rest.y, false);
+});
 
 // ---- Buttons ----
 // every button vibrates the moment your finger lands on it, not after you lift it
