@@ -494,6 +494,16 @@ type command struct {
 	Text string   `json:"text"`
 	K    string   `json:"k"`
 	Keys []string `json:"keys"`
+	App  string   `json:"app"`
+}
+
+// Sites the Apps tab can open. Only these: the phone can't make the PC open anything else.
+var appSites = map[string]string{
+	"youtube":  "https://www.youtube.com",
+	"netflix":  "https://www.netflix.com",
+	"aryplus":  "https://aryplus.tv",
+	"gmail":    "https://mail.google.com",
+	"whatsapp": "https://web.whatsapp.com",
 }
 
 func wsHandler(w http.ResponseWriter, r *http.Request) {
@@ -573,6 +583,10 @@ func handle(c command) {
 		}
 		if len(vks) > 0 && len(vks) <= 4 {
 			pressKeys(vks)
+		}
+	case "open":
+		if u, ok := appSites[c.App]; ok {
+			openBrowser(u)
 		}
 	case "shutdown":
 		if err := shutdownPC(); err != nil {

@@ -29,6 +29,7 @@
   * { box-sizing: border-box; margin: 0; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
   html, body { height: 100%; }
   body {
+    padding-left: max(10px, env(safe-area-inset-left)); padding-right: max(10px, env(safe-area-inset-right));
     color: var(--ink); font: 400 16px/1.3 "Outfit", "Urdu", system-ui, sans-serif;
     display: flex; flex-direction: column; gap: 10px;
     height: 100vh; height: 100dvh; overflow: hidden;
@@ -76,7 +77,7 @@
   #pad.seaming #seam::before { border-left-color: #fff; }
 
   /* ---- frosted dock ---- */
-  .dock { display: flex; flex-direction: column; gap: 12px; padding: 14px; border-radius: 38px;
+  .dock { display: flex; flex-direction: column; gap: 9px; padding: 11px; border-radius: 34px;
           background: rgba(255, 255, 255, .13);
           -webkit-backdrop-filter: blur(28px) saturate(1.5); backdrop-filter: blur(28px) saturate(1.5);
           border: 1px solid rgba(255, 255, 255, .16);
@@ -85,18 +86,18 @@
     .dock { background: rgba(84, 78, 76, .94); }
   }
 
-  .clicks { display: flex; height: 52px; border-radius: 999px; background: var(--pill); overflow: hidden; }
+  .clicks { display: flex; height: 46px; border-radius: 999px; background: var(--pill); overflow: hidden; }
   .clicks button { flex: 1; color: var(--ink-2); font-size: 15px; }
   .clicks button + button { border-left: 1px solid rgba(255, 255, 255, .1); }
   .clicks button:active { background: var(--pill-press); color: var(--ink); }
 
   .tabs { display: flex; gap: 22px; padding: 0 10px; }
-  .tabs button { height: 30px; font-size: 16px; color: var(--ink-3); display: flex; align-items: center; gap: 7px; }
+  .tabs button { height: 26px; font-size: 16px; color: var(--ink-3); display: flex; align-items: center; gap: 7px; }
   .tabs button::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: 0; }
   .tabs button[aria-selected="true"] { color: var(--ink); }
   .tabs button[aria-selected="true"]::before { opacity: 1; }
 
-  .panel { display: none; gap: 8px; height: 206px; }
+  .panel { display: none; gap: 8px; height: 168px; }
   .panel.on { display: grid; }
   .k { background: var(--pill); border-radius: 24px; display: flex; align-items: center; justify-content: center;
        gap: 8px; min-height: 50px; font-size: 15px; color: var(--ink); transition: transform .08s, background .08s; }
@@ -112,7 +113,7 @@
   .vol button + button { border-left: 1px solid rgba(255, 255, 255, .1); }
   .vol button:active { background: var(--pill-press); }
 
-  #keys { --d: 196px; grid-template-columns: var(--d) 1fr; align-items: center; gap: 12px; }
+  #keys { --d: 168px; grid-template-columns: var(--d) 1fr; align-items: center; gap: 12px; }
   .dpad { position: relative; width: var(--d); height: var(--d); border-radius: 50%; background: var(--pill); }
   .dpad button { position: absolute; display: grid; place-items: center; }
   .dpad .u, .dpad .d { left: 31.6%; width: 36.8%; height: 31.6%; }
@@ -125,17 +126,27 @@
 
   #type { grid-template-rows: auto 1fr; grid-template-columns: minmax(0, 1fr); }
   .typerow { display: flex; gap: 8px; }
-  #text { flex: 1; min-width: 0; height: 54px; padding: 0 20px; border: 0; border-radius: 999px; outline: none;
+  #text { flex: 1; min-width: 0; height: 50px; padding: 0 20px; border: 0; border-radius: 999px; outline: none;
           background: var(--pill); color: var(--ink); font: inherit; font-size: 17px; -webkit-user-select: text; user-select: text; }
   #text:focus { box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .5); }
   #text::placeholder { color: var(--ink-3); }
-  #send { width: 54px; height: 54px; border-radius: 50%; display: grid; place-items: center; }
+  #send { width: 50px; height: 50px; border-radius: 50%; display: grid; place-items: center; }
   .typekeys { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-template-rows: 1fr 1fr; gap: 8px; }
   .typekeys .k { font-size: 14px; }
+  #apps { grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: 1fr 1fr; }
+  .app { flex-direction: column; gap: 6px; font-size: 13px; color: var(--ink-2); }
+  .app svg { color: var(--ink); }
+
+  /* Phone turned sideways: the whole screen is touchpad */
+  body.landscape { padding: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right))
+                            max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left)); }
+  body.landscape .dock { display: none; }
+  body.landscape #pad { min-height: 0; border-radius: 30px; }
   #media, .keygrid { grid-auto-columns: minmax(0, 1fr); }
 
   button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
-  @media (max-height: 660px) { .panel { height: 172px; } #keys { --d: 168px; } .k { min-height: 0; } .dock { gap: 10px; } }
+  @media (max-height: 660px) { .panel { height: 148px; } #keys { --d: 148px; } .k { min-height: 0; } .clicks { height: 42px; }
+                               #text, #send { height: 44px; } #send { width: 44px; } .dock { gap: 8px; } }
   @media (max-width: 350px) { #keys { grid-template-columns: 1fr; } .keygrid { display: none; } }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
@@ -160,6 +171,12 @@
   <symbol id="i-enter" viewBox="0 0 24 24"><path d="M9 10l-5 5 5 5"/><path d="M20 4v7a4 4 0 0 1-4 4H4"/></symbol>
   <symbol id="i-send" viewBox="0 0 24 24"><path d="M4 12h15M13 6l6 6-6 6"/></symbol>
   <symbol id="i-switch" viewBox="0 0 24 24"><rect x="2" y="8" width="13" height="11" rx="2"/><path d="M7 8V6a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-5"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path class="fill" d="M10 8.3v7.4l6.2-3.7z"/></symbol>
+  <symbol id="i-film" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7.5 4v16M16.5 4v16M3 9h4.5M3 15h4.5M16.5 9H21M16.5 15H21"/></symbol>
+  <symbol id="i-tv" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="m8 3 4 4 4-4"/></symbol>
+  <symbol id="i-mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3.5 7 8.5 6 8.5-6"/></symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24"><path d="M20 11.5a8 8 0 0 1-11.7 7.1L4 20l1.3-4A8 8 0 1 1 20 11.5z"/></symbol>
+  <symbol id="i-closetab" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 8.5h18M10 12.5l4 4M14 12.5l-4 4"/></symbol>
   <symbol id="i-close" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="m9 9 6 6M15 9l-6 6"/></symbol>
 </svg>
 
@@ -179,12 +196,13 @@
   </div>
 
   <div class="tabs" role="tablist">
-    <button role="tab" data-tab="type" aria-selected="false">Type</button>
-    <button role="tab" data-tab="media" aria-selected="true">Media</button>
+    <button role="tab" data-tab="type" aria-selected="true">Type</button>
+    <button role="tab" data-tab="media" aria-selected="false">Media</button>
     <button role="tab" data-tab="keys" aria-selected="false">Keys</button>
+    <button role="tab" data-tab="apps" aria-selected="false">Apps</button>
   </div>
 
-  <section class="panel on" id="media">
+  <section class="panel" id="media">
     <button class="k" data-key="prevtrack" aria-label="Previous"><svg><use href="#i-prev"/></svg></button>
     <button class="k solid play" data-key="playpause" aria-label="Play or pause"><svg><use href="#i-playpause"/></svg></button>
     <button class="k" data-key="nexttrack" aria-label="Next"><svg><use href="#i-next"/></svg></button>
@@ -216,11 +234,11 @@
     </div>
   </section>
 
-  <section class="panel" id="type">
-    <div class="typerow">
-      <input id="text" placeholder="Type here, اردو bhi chalti hai" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="send">
-      <button id="send" class="solid" aria-label="Send text"><svg><use href="#i-send"/></svg></button>
-    </div>
+  <section class="panel on" id="type">
+    <form class="typerow" id="typeform" autocomplete="off">
+      <input id="text" placeholder="Type here, اردو bhi chalti hai" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="search">
+      <button id="send" type="submit" class="solid" aria-label="Send and press Enter"><svg><use href="#i-send"/></svg></button>
+    </form>
     <div class="typekeys">
       <button class="k" data-key="backspace" aria-label="Backspace"><svg><use href="#i-bksp"/></svg></button>
       <button class="k" data-key="space">Space</button>
@@ -231,6 +249,15 @@
       <button class="k" data-key="esc">Esc</button>
       <button class="k" data-hotkey="ctrl,a">Select all</button>
     </div>
+  </section>
+
+  <section class="panel" id="apps">
+    <button class="k app" data-open="youtube"><svg><use href="#i-play"/></svg>YouTube</button>
+    <button class="k app" data-open="netflix"><svg><use href="#i-film"/></svg>Netflix</button>
+    <button class="k app" data-open="aryplus"><svg><use href="#i-tv"/></svg>ARY+</button>
+    <button class="k app" data-open="gmail"><svg><use href="#i-mail"/></svg>Gmail</button>
+    <button class="k app" data-open="whatsapp"><svg><use href="#i-chat"/></svg>WhatsApp</button>
+    <button class="k app" data-hotkey="ctrl,w"><svg><use href="#i-closetab"/></svg>Close tab</button>
   </section>
 </div>
 
@@ -443,17 +470,45 @@ function showTab(name) {
   store.set("br-tab", name);
 }
 document.querySelectorAll("[data-tab]").forEach(b => b.addEventListener("click", () => showTab(b.dataset.tab)));
-showTab(store.get("br-tab") || "media");
+showTab("type"); // always opens on Type
 
 // ---- Typing ----
 const input = document.getElementById("text");
 function sendText() {
   if (input.value) { send({ t: "type", text: input.value }); input.value = ""; buzz(HAPTIC.press, 150); }
 }
-document.getElementById("send").addEventListener("click", sendText);
-input.addEventListener("keydown", e => {
-  if (e.key === "Enter") { sendText(); send({ t: "key", k: "enter" }); }
+// The arrow button and the keyboard's Enter / tick / search key all submit the form:
+// type the text on the PC, then press Enter there, so a search runs straight away.
+document.getElementById("typeform").addEventListener("submit", e => {
+  e.preventDefault();
+  sendText();
+  send({ t: "key", k: "enter" });
 });
+
+// ---- Apps: open a site in the PC's default browser ----
+document.querySelectorAll("[data-open]").forEach(b =>
+  b.addEventListener("click", () => send({ t: "open", app: b.dataset.open })));
+
+// ---- Phone turned sideways: touchpad only (not while typing, when the keyboard shrinks the screen) ----
+function sideways() {
+  const t = screen.orientation && screen.orientation.type;
+  if (t) return t.startsWith("landscape");
+  if (typeof window.orientation === "number") return Math.abs(window.orientation) === 90;
+  return matchMedia("(orientation: landscape)").matches;
+}
+function applyOrientation() {
+  const phone = Math.min(screen.width, screen.height) < 600;
+  const on = phone && sideways() && document.activeElement !== input;
+  if (document.body.classList.contains("landscape") !== on) {
+    document.body.classList.toggle("landscape", on);
+    requestAnimationFrame(layoutCore);
+  }
+}
+addEventListener("resize", applyOrientation);
+input.addEventListener("blur", () => setTimeout(applyOrientation, 300));
+addEventListener("orientationchange", () => setTimeout(applyOrientation, 50));
+if (screen.orientation && screen.orientation.addEventListener) screen.orientation.addEventListener("change", applyOrientation);
+applyOrientation();
 
 // The app shows its own dialog (WebViews don't show confirm()) and answers via brConfirmed().
 window.brConfirmed = what => { if (what === "shutdown") send({ t: "shutdown" }); };
