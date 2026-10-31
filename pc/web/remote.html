@@ -251,22 +251,48 @@ function setBig(line1, line2) {
   big.querySelector(".name").textContent = line2;
 }
 
+let toldApp = false;
 function connect() {
   let opened = false;
   ws = new WebSocket(`ws://${host}/ws?key=${encodeURIComponent(key)}`);
-  ws.onopen = () => { opened = true; failures = 0; setBig("Connected to", pcName); };
+  ws.onopen = () => {
+    if (failures >= 3) hint.classList.add("gone");
+    opened = true; failures = 0; toldApp = false; setBig("Connected to", pcName);
+  };
   ws.onmessage = e => {
-    try { const m = JSON.parse(e.data); if (m.t === "hello") { pcName = m.name; setBig("Connected to", pcName); } } catch (_) {}
+    try {
+      const m = JSON.parse(e.data);
+      if (m.t === "hello") { pcName = m.name; setBig("Connected to", pcName); usePermanentName(m.local, m.port); }
+    } catch (_) {}
   };
   ws.onclose = () => {
     if (!opened) failures++;
     if (failures >= 3) {
-      setBig("Can't reach", "your PC");
+      setBig("Can't reach", pcName);
       hint.classList.remove("gone");
-      hint.innerHTML = "<span>Check the phone is on the same Wi-Fi</span><span>and Blanket Remote is running on the PC.</span><span>Made a new key? Scan the new QR code.</span>";
+      hint.innerHTML = "<span>Check the phone is on the same Wi-Fi</span><span>and Blanket Remote is running on the PC.</span><span>It connects by itself as soon as the PC is back.</span>";
+      // In the app: let it look for the PC (its address may have changed) and reload this page.
+      if (!toldApp && inApp()) { toldApp = true; window.BRApp.postMessage(JSON.stringify({ lost: true })); }
     } else setBig("Reconnecting to", pcName);
     setTimeout(connect, failures >= 3 ? 4000 : 1500);
   };
+}
+
+// Opened from the QR code, the address is the PC's IP, which can change after a restart. If this phone
+// understands .local names (iPhone Safari does), switch to the PC's permanent name, so "Add to Home
+// Screen" saves a link that keeps working.
+function usePermanentName(local, port) {
+  if (!local || inApp() || location.hostname === local) return;
+  if (!/^\d+\.\d+\.\d+\.\d+$/.test(location.hostname) || location.hostname.startsWith("127.")) return;
+  const target = `${local}:${port || location.port}`;
+  let probe;
+  try { probe = new WebSocket(`ws://${target}/ws?key=${encodeURIComponent(key)}`); } catch (e) { return; }
+  const giveUp = setTimeout(() => probe.close(), 3000);
+  probe.onopen = () => {
+    clearTimeout(giveUp); probe.close();
+    location.replace(`http://${target}/?key=${encodeURIComponent(key)}`);
+  };
+  probe.onerror = () => clearTimeout(giveUp);
 }
 function send(obj) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(obj)); }
 connect();

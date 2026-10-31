@@ -76,6 +76,25 @@ class PcStore {
     await prefs.setString(_pcsKey, jsonEncode(data));
   }
 
+  /// Saves one PC (e.g. its new address) without touching the others.
+  static Future<void> upsert(Pc pc) async {
+    final all = await load();
+    final i = all.indexWhere((p) => p.id == pc.id);
+    if (i >= 0) {
+      all[i] = pc;
+    } else {
+      all.add(pc);
+    }
+    await save(all);
+  }
+
+  static Future<Pc?> byId(String id) async {
+    for (final p in await load()) {
+      if (p.id == id) return p;
+    }
+    return null;
+  }
+
   static Future<String?> lastUsed() async => (await SharedPreferences.getInstance()).getString(_lastKey);
 
   static Future<void> setLastUsed(String id) async =>
@@ -85,8 +104,16 @@ class PcStore {
 // ---------- discovery ----------
 
 /// Shouts "anyone there?" on the Wi-Fi and collects every PC that answers.
-Future<List<Pc>> discoverPcs({Duration listen = const Duration(milliseconds: 1500)}) async {
+/// With [stopOnId], returns as soon as that one PC has answered.
+Future<List<Pc>> discoverPcs({Duration listen = const Duration(milliseconds: 1500), String? stopOnId}) async {
   final found = <String, Pc>{};
+  final gotIt = Completer<void>();
+  // waits for [d], or less if the PC we're looking for answers; true = found it
+  Future<bool> pause(Duration d) async {
+    await Future.any([Future<void>.delayed(d), gotIt.future]);
+    return gotIt.isCompleted;
+  }
+
   RawDatagramSocket? sock;
   try {
     final s = await RawDatagramSocket.bind(InternetAddress.anyIPv4, 0);
@@ -113,6 +140,7 @@ Future<List<Pc>> discoverPcs({Duration listen = const Duration(milliseconds: 150
           port: port is int ? port : defaultPcPort,
           os: os is String ? os : '',
         )..online = true;
+        if (id == stopOnId && !gotIt.isCompleted) gotIt.complete();
       } catch (_) {}
     });
 
@@ -131,9 +159,9 @@ Future<List<Pc>> discoverPcs({Duration listen = const Duration(milliseconds: 150
         // uses a second router's Wi-Fi (a different network that broadcasts can't reach).
         await _sweep(s, msg, [for (final p in _commonPrefixes) if (!nets.prefixes.contains(p)) p], nets.own);
       }
-      await Future<void>.delayed(const Duration(milliseconds: 250));
+      if (await pause(const Duration(milliseconds: 250))) break;
     }
-    await Future<void>.delayed(listen);
+    if (!gotIt.isCompleted) await pause(listen);
   } catch (_) {
     // no Wi-Fi / no network: return whatever we have
   } finally {
@@ -198,6 +226,45 @@ bool _isPrivate(String ip) {
   if (p.length != 4 || p.any((x) => x == null)) return false;
   final a = p[0]!, b = p[1]!;
   return a == 10 || (a == 172 && b >= 16 && b <= 31) || (a == 192 && b == 168);
+}
+
+// ---------- reconnecting to a remembered PC ----------
+
+enum AuthCheck { ok, wrongKey, notThere }
+
+/// One quick request to the PC's last known address: is it still this PC, and does our key still work?
+Future<AuthCheck> checkPc(Pc pc) async {
+  final client = HttpClient()..connectionTimeout = const Duration(milliseconds: 1500);
+  try {
+    final uri = Uri.parse('http://${pc.ip}:${pc.port}/api/auth?key=${Uri.encodeComponent(pc.key ?? '')}');
+    final res = await (await client.getUrl(uri)).close().timeout(const Duration(seconds: 2));
+    final j = jsonDecode(await res.transform(utf8.decoder).join());
+    if (j is! Map || j['app'] != 'BlanketRemote' || j['id'] != pc.id) return AuthCheck.notThere;
+    if (j['name'] is String) pc.name = j['name'] as String;
+    if (j['os'] is String) pc.os = j['os'] as String;
+    return j['ok'] == true ? AuthCheck.ok : AuthCheck.wrongKey;
+  } catch (_) {
+    return AuthCheck.notThere;
+  } finally {
+    client.close(force: true);
+  }
+}
+
+/// Finds a remembered PC again after its address changed. Updates [pc] in place; true if found.
+Future<bool> relocatePc(Pc pc) async {
+  final found = await discoverPcs(stopOnId: pc.id, listen: const Duration(milliseconds: 1200));
+  for (final f in found) {
+    if (f.id == pc.id) {
+      pc
+        ..ip = f.ip
+        ..port = f.port
+        ..name = f.name
+        ..os = f.os.isNotEmpty ? f.os : pc.os
+        ..online = true;
+      return true;
+    }
+  }
+  return false;
 }
 
 // ---------- HTTP helpers ----------

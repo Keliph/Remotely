@@ -370,3 +370,13 @@ func platformFix(what string) {
 		_ = exec.Command("open", "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility").Start()
 	}
 }
+
+// mdnsName: a Mac already answers to its own Bonjour name (e.g. Epuhs-MacBook-Pro.local).
+func mdnsName(id string) (string, bool) {
+	if out, err := exec.Command("scutil", "--get", "LocalHostName").Output(); err == nil {
+		if n := strings.TrimSpace(string(out)); n != "" {
+			return n + ".local", false
+		}
+	}
+	return "blanketremote-" + shortID(id) + ".local", true
+}

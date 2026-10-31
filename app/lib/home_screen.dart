@@ -21,7 +21,21 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    _quickStart();
     _scan();
+  }
+
+  /// Opens the remote right away if the PC used last time answers at its saved address with the
+  /// saved key (one quick request). The full search below still runs for the list.
+  Future<void> _quickStart() async {
+    final lastId = await PcStore.lastUsed();
+    if (lastId == null) return;
+    final pc = await PcStore.byId(lastId);
+    if (pc == null || !pc.paired) return;
+    if (await checkPc(pc) != AuthCheck.ok || _autoOpened || !mounted) return;
+    _autoOpened = true;
+    pc.online = true;
+    _openRemote(pc);
   }
 
   // ---------- finding PCs ----------
@@ -57,6 +71,11 @@ class _HomeScreenState extends State<HomeScreen> {
             }
           }),
     ]);
+    // keep any key the remote screen saved meanwhile (e.g. after connecting again)
+    for (final fresh in await PcStore.load()) {
+      final p = byId[fresh.id];
+      if (p != null && fresh.paired) p.key = fresh.key;
+    }
     await PcStore.save(byId.values);
 
     final list = byId.values.toList()
@@ -123,6 +142,7 @@ class _HomeScreenState extends State<HomeScreen> {
     await PcStore.setLastUsed(pc.id);
     if (!mounted) return;
     await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => RemoteScreen(pc: pc)));
+    if (mounted) _scan(); // the PC's address or key may have changed while the remote was open
   }
 
   Future<void> _forget(Pc pc) async {

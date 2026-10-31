@@ -273,3 +273,6 @@ func psEncode(s string) string {
 	}
 	return base64.StdEncoding.EncodeToString(b)
 }
+
+// mdnsName: Windows doesn't reliably answer for its own name, so Blanket Remote answers for its own.
+func mdnsName(id string) (string, bool) { return "blanketremote-" + shortID(id) + ".local", true }
