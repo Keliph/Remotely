@@ -49,15 +49,25 @@ jobs:
           KEYSTORE_B64: ${{ secrets.ANDROID_DEBUG_KEYSTORE }}
         run: |
           if [ -n "$KEYSTORE_B64" ]; then
-            mkdir -p ~/.android
-            echo "$KEYSTORE_B64" | base64 -d > ~/.android/debug.keystore
-            keytool -list -keystore ~/.android/debug.keystore -storepass android | grep -i "fingerprint" | tee -a "$RUNNER_TEMP/build.log"
+            echo "$KEYSTORE_B64" | tr -d ' \r\n' | base64 -d > "$RUNNER_TEMP/blanket.keystore"
+            echo "BR_KEYSTORE=$RUNNER_TEMP/blanket.keystore" >> "$GITHUB_ENV"
+            echo "::notice::Keystore from secret: $(keytool -list -keystore "$RUNNER_TEMP/blanket.keystore" -storepass android | grep -i 'SHA-256' | head -1)"
           else
             echo "::warning::Secret ANDROID_DEBUG_KEYSTORE is missing - this APK uses a temporary key and won't install over an earlier one"
           fi
 
       - name: Build APK
         run: flutter build apk --release 2>&1 | tee -a "$RUNNER_TEMP/build.log"
+
+      # Never publish an APK signed with the wrong key (it wouldn't install over the app on people's phones).
+      - name: Check the APK's signing key
+        run: |
+          APKSIGNER="$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)apksigner"
+          FP=$("$APKSIGNER" verify --print-certs build/app/outputs/flutter-apk/app-release.apk | grep -m1 "SHA-256 digest" | awk '{print toupper($NF)}')
+          echo "::notice::APK signing key SHA-256: $FP"
+          if [ -n "$BR_KEYSTORE" ] && [ "$FP" != "E76945B682ADC5EEA3305BDFCA1B2EE46BBF955A5481743EFF5EED3AB8E64941" ]; then
+            echo "::error::APK is not signed with the permanent key"; exit 1
+          fi
 
       - uses: actions/upload-artifact@v4
         with:

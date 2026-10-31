@@ -82,6 +82,59 @@ def cap_target_sdk(max_sdk=36):
     print("WARNING: app build.gradle not found")
 
 
+def patch_signing():
+    """Sign release builds with the permanent key when BR_KEYSTORE points at it (set by the cloud build
+    from the ANDROID_DEBUG_KEYSTORE secret). Without it, Flutter's default (a temporary debug key) is used."""
+    app_dir = APP / "android" / "app"
+    kts, groovy = app_dir / "build.gradle.kts", app_dir / "build.gradle"
+    if kts.exists():
+        path, text = kts, kts.read_text(encoding="utf-8")
+        block = """
+    signingConfigs {
+        create("blanket") {
+            val ks = System.getenv("BR_KEYSTORE")
+            if (ks != null) {
+                storeFile = file(ks)
+                storePassword = "android"
+                keyAlias = "androiddebugkey"
+                keyPassword = "android"
+            }
+        }
+    }
+"""
+        use = 'signingConfig = if (System.getenv("BR_KEYSTORE") != null) signingConfigs.getByName("blanket") else signingConfigs.getByName("debug")'
+        old_use = re.compile(r'signingConfig\s*=\s*signingConfigs\.getByName\("debug"\)')
+    elif groovy.exists():
+        path, text = groovy, groovy.read_text(encoding="utf-8")
+        block = """
+    signingConfigs {
+        blanket {
+            if (System.getenv("BR_KEYSTORE") != null) {
+                storeFile file(System.getenv("BR_KEYSTORE"))
+                storePassword "android"
+                keyAlias "androiddebugkey"
+                keyPassword "android"
+            }
+        }
+    }
+"""
+        use = 'signingConfig = System.getenv("BR_KEYSTORE") != null ? signingConfigs.blanket : signingConfigs.debug'
+        old_use = re.compile(r'signingConfig\s*=?\s*signingConfigs\.debug\b')
+    else:
+        print("WARNING: app build.gradle not found; release signing not patched")
+        return
+    if "BR_KEYSTORE" in text:
+        print("signing already patched")
+        return
+    text, n1 = re.subn(r"\n(\s*)buildTypes\s*\{", lambda m: block + "\n" + m.group(1) + "buildTypes {", text, count=1)
+    text, n2 = old_use.subn(use, text, count=1)
+    if n1 != 1 or n2 != 1:
+        print(f"WARNING: release signing not patched in {path.name} (buildTypes={n1}, signingConfig={n2})")
+        return
+    path.write_text(text, encoding="utf-8")
+    print(f"release signing uses BR_KEYSTORE when set ({path.name})")
+
+
 def copy_icons():
     src = APP / "assets" / "icon" / "android"
     count = 0
@@ -104,5 +157,6 @@ if __name__ == "__main__":
     patch_manifest()
     patch_activity()
     cap_target_sdk()
+    patch_signing()
     copy_icons()
     drop_template_test()
