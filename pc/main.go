@@ -40,7 +40,7 @@ const (
 // easy to see which version is running.
 var build = "dev"
 
-//go:embed web/remote.html web/setup.html web/fonts/*.woff2 web/apple-touch-icon.png
+//go:embed web/remote.html web/setup.html web/fonts/*.woff2 web/apple-touch-icon.png web/icon-192.png web/icon-512.png web/manifest.webmanifest
 var webFS embed.FS
 
 type config struct {
@@ -139,6 +139,9 @@ func main() {
 	mux.HandleFunc("/apple-touch-icon.png", iconHandler)
 	mux.HandleFunc("/apple-touch-icon-precomposed.png", iconHandler)
 	mux.HandleFunc("/favicon.ico", iconHandler)
+	mux.HandleFunc("/icon-192.png", staticFile("web/icon-192.png", "image/png"))
+	mux.HandleFunc("/icon-512.png", staticFile("web/icon-512.png", "image/png"))
+	mux.HandleFunc("/manifest.webmanifest", staticFile("web/manifest.webmanifest", "application/manifest+json"))
 	mux.HandleFunc("/ws", wsHandler)
 	mux.HandleFunc("/api/ping", pingHandler)
 	mux.HandleFunc("/api/auth", authHandler)
@@ -299,6 +302,16 @@ func servePage(name string, local bool) http.HandlerFunc {
 		b, _ := webFS.ReadFile(name)
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.Header().Set("Cache-Control", "no-store")
+		_, _ = w.Write(b)
+	}
+}
+
+// staticFile serves one bundled file (home-screen app icons and manifest).
+func staticFile(name, contentType string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		b, _ := webFS.ReadFile(name)
+		w.Header().Set("Content-Type", contentType)
+		w.Header().Set("Cache-Control", "public, max-age=86400")
 		_, _ = w.Write(b)
 	}
 }

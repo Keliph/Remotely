@@ -4,11 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Blanket Remote">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#2a1c16">
 <title>Blanket Remote</title>
 <link rel="icon" href="data:,">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
 <style>
   @font-face { font-family: "Outfit"; font-weight: 300; font-display: swap; src: url(/fonts/outfit-latin-300.woff2) format("woff2"); }
   @font-face { font-family: "Outfit"; font-weight: 400; font-display: swap; src: url(/fonts/outfit-latin-400.woff2) format("woff2"); }
@@ -28,6 +31,7 @@
   }
   * { box-sizing: border-box; margin: 0; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
   html, body { height: 100%; }
+  html { background-color: #2a1c16; }
   body {
     padding-left: max(10px, env(safe-area-inset-left)); padding-right: max(10px, env(safe-area-inset-right));
     color: var(--ink); font: 400 16px/1.3 "Outfit", "Urdu", system-ui, sans-serif;
@@ -273,6 +277,14 @@ const store = {
 if (key) store.set("br-key:" + host, key); else key = store.get("br-key:" + host) || "";
 
 const big = document.getElementById("big"), hint = document.getElementById("hint");
+
+// iPhone in Safari (not opened from the home screen): mention the full-screen way, in the first-use tips
+if ((/iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1))
+    && !navigator.standalone) {
+  const tip = document.createElement("span");
+  tip.textContent = "Full screen: tap ••• → Share → Add to Home Screen";
+  hint.appendChild(tip);
+}
 let ws, failures = 0, pcName = "your PC";
 
 function setBig(line1, line2) {
