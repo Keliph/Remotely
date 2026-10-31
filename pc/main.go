@@ -51,12 +51,11 @@ type config struct {
 }
 
 var (
-	cfgMu     sync.Mutex
-	cfg       config
-	cfgPath   string
-	hostname  string
-	localName string // permanent .local name phones can use instead of the IP
-	port      int
+	cfgMu    sync.Mutex
+	cfg      config
+	cfgPath  string
+	hostname string
+	port     int
 
 	phones   atomic.Int32
 	connsMu  sync.Mutex
@@ -118,13 +117,6 @@ func main() {
 
 	platformInit()
 	go discoveryResponder()
-	cfgMu.Lock()
-	name, ownResponder := mdnsName(cfg.ID)
-	cfgMu.Unlock()
-	localName = name
-	if ownResponder {
-		go mdnsResponder(name)
-	}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", servePage("web/remote.html", false))
@@ -367,13 +359,6 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, map[string]any{"app": appName, "id": id, "ok": ok, "name": hostname, "os": runtime.GOOS, "port": port})
 }
 
-func shortID(id string) string {
-	if len(id) > 6 {
-		return id[:6]
-	}
-	return id
-}
-
 func setupInfoHandler(w http.ResponseWriter, r *http.Request) {
 	u := phoneURL()
 	png, _ := qrcode.Encode(u, qrcode.Medium, 512)
@@ -393,7 +378,6 @@ func setupInfoHandler(w http.ResponseWriter, r *http.Request) {
 		"autostart": autostartEnabled(),
 		"version":   version,
 		"os":        runtime.GOOS,
-		"local":     localName,
 		"notices":   platformNotices(),
 	})
 }
@@ -522,12 +506,7 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("phone disconnected %s", r.RemoteAddr)
 	}()
 
-	// "ip": the address this phone reached us on, so the page has a backup route if the .local name is slow
-	ipSeen := ""
-	if la, ok := r.Context().Value(http.LocalAddrContextKey).(net.Addr); ok {
-		ipSeen = la.String()
-	}
-	_ = c.WriteJSON(map[string]any{"t": "hello", "name": hostname, "v": version, "local": localName, "port": port, "ip": ipSeen})
+	_ = c.WriteJSON(map[string]any{"t": "hello", "name": hostname, "v": version})
 
 	for {
 		_, msg, err := c.ReadMessage()
