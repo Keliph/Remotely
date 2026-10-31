@@ -40,7 +40,7 @@ const (
 // easy to see which version is running.
 var build = "dev"
 
-//go:embed web/remote.html web/setup.html web/fonts/*.woff2
+//go:embed web/remote.html web/setup.html web/fonts/*.woff2 web/apple-touch-icon.png
 var webFS embed.FS
 
 type config struct {
@@ -136,6 +136,9 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", servePage("web/remote.html", false))
 	mux.HandleFunc("/fonts/", fontHandler)
+	mux.HandleFunc("/apple-touch-icon.png", iconHandler)
+	mux.HandleFunc("/apple-touch-icon-precomposed.png", iconHandler)
+	mux.HandleFunc("/favicon.ico", iconHandler)
 	mux.HandleFunc("/ws", wsHandler)
 	mux.HandleFunc("/api/ping", pingHandler)
 	mux.HandleFunc("/api/auth", authHandler)
@@ -298,6 +301,14 @@ func servePage(name string, local bool) http.HandlerFunc {
 		w.Header().Set("Cache-Control", "no-store")
 		_, _ = w.Write(b)
 	}
+}
+
+// iconHandler: the icon an iPhone uses for "Add to Home Screen".
+func iconHandler(w http.ResponseWriter, r *http.Request) {
+	b, _ := webFS.ReadFile("web/apple-touch-icon.png")
+	w.Header().Set("Content-Type", "image/png")
+	w.Header().Set("Cache-Control", "public, max-age=31536000")
+	_, _ = w.Write(b)
 }
 
 // fontHandler serves the bundled font so the phone page looks right even without internet.

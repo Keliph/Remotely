@@ -7,6 +7,8 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#2a1c16">
 <title>Blanket Remote</title>
+<link rel="icon" href="data:,">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <style>
   @font-face { font-family: "Outfit"; font-weight: 300; font-display: swap; src: url(/fonts/outfit-latin-300.woff2) format("woff2"); }
   @font-face { font-family: "Outfit"; font-weight: 400; font-display: swap; src: url(/fonts/outfit-latin-400.woff2) format("woff2"); }
@@ -251,11 +253,13 @@ function setBig(line1, line2) {
   big.querySelector(".name").textContent = line2;
 }
 
-let toldApp = false;
+let toldApp = false, everConnected = false;
 function connect() {
   let opened = false;
   ws = new WebSocket(`ws://${host}/ws?key=${encodeURIComponent(key)}`);
   ws.onopen = () => {
+    everConnected = true;
+    try { sessionStorage.removeItem("br-refreshed"); } catch (e) {}
     if (failures >= 3) hint.classList.add("gone");
     opened = true; failures = 0; toldApp = false; setBig("Connected to", pcName);
   };
@@ -276,6 +280,20 @@ function connect() {
 }
 function send(obj) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(obj)); }
 connect();
+
+// Safari on iOS 26 sometimes can't make the first connection after a page opens (WebKit bug 302823)
+// until the page is refreshed. If we're still not connected a few seconds after opening, and the PC
+// does answer, refresh once by ourselves — exactly what a manual refresh does.
+setTimeout(async () => {
+  if (everConnected || inApp()) return;
+  try {
+    if (sessionStorage.getItem("br-refreshed")) return;  // only once, never a refresh loop
+    const r = await fetch("/api/ping", { cache: "no-store" });
+    if (!r.ok || everConnected) return;
+    sessionStorage.setItem("br-refreshed", "1");
+    location.reload();
+  } catch (e) {}
+}, 3500);
 
 // ---- vibration ----
 // Inside the Blanket Remote app: the app vibrates natively (window.BRApp bridge).
