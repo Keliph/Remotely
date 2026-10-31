@@ -155,9 +155,9 @@ func main() {
 
 	log.Printf("%s %s (build %s) on port %d, phone URL %s", appName, version, build, port, phoneURL())
 
-	// nudge the mouse so Windows shows the cursor right away
-	moveMouse(1, 0)
-	moveMouse(-1, 0)
+	// show the cursor right away (Windows hides it on touch laptops until a mouse moves)
+	wakeCursor()
+	pointer = newSmoother(moveMouse, wakeCursor)
 
 	if !autostartLaunch {
 		go func() {
@@ -494,6 +494,8 @@ func pairHandler(w http.ResponseWriter, r *http.Request) {
 
 // ---------- WebSocket: the actual remote ----------
 
+var pointer *smoother // smooth cursor movement (pointer.go)
+
 var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool { return true }, // the key is the auth; the app's WebView has its own origin
 }
@@ -572,8 +574,9 @@ func clamp(v, lo, hi int) int {
 func handle(c command) {
 	switch c.T {
 	case "move":
-		moveMouse(clamp(c.DX, -2000, 2000), clamp(c.DY, -2000, 2000))
+		pointer.add(clamp(c.DX, -2000, 2000), clamp(c.DY, -2000, 2000))
 	case "click":
+		pointer.flush()
 		clickMouse(c.B == "right")
 	case "scroll":
 		scrollMouse(clamp(c.N, -50, 50))

@@ -119,7 +119,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"math"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -131,14 +130,15 @@ import (
 
 var inputMu sync.Mutex
 
+// moveMouse: exact relative move (smoothing and acceleration happen in pointer.go).
 func moveMouse(dx, dy int) {
-	fx, fy := float64(dx), float64(dy)
-	// gentle acceleration: slow swipes stay precise, fast swipes cross the screen (Windows does this too)
-	accel := 1 + math.Min(math.Hypot(fx, fy), 40)/40
 	inputMu.Lock()
 	defer inputMu.Unlock()
-	C.br_move(C.double(fx*accel), C.double(fy*accel))
+	C.br_move(C.double(dx), C.double(dy))
 }
+
+func wakeCursor()     {}
+func precise(on bool) {}
 
 func clickMouse(right bool) {
 	r := 0

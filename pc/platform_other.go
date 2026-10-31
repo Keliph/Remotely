@@ -36,3 +36,6 @@ func displayName() string {
 func platformInit()                        {}
 func platformNotices() []map[string]string { return nil }
 func platformFix(what string)              {}
+
+func wakeCursor()     {}
+func precise(on bool) {}

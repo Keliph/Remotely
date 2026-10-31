@@ -18,14 +18,18 @@ import (
 )
 
 var (
-	user32           = syscall.NewLazyDLL("user32.dll")
-	advapi32         = syscall.NewLazyDLL("advapi32.dll")
-	procSendInput    = user32.NewProc("SendInput")
-	procMapVirtual   = user32.NewProc("MapVirtualKeyW")
-	procMessageBox   = user32.NewProc("MessageBoxW")
-	procRegSetValue  = advapi32.NewProc("RegSetValueExW")
-	procRegDelValue  = advapi32.NewProc("RegDeleteValueW")
-	procRegCreateKey = advapi32.NewProc("RegCreateKeyExW")
+	user32            = syscall.NewLazyDLL("user32.dll")
+	advapi32          = syscall.NewLazyDLL("advapi32.dll")
+	procSendInput     = user32.NewProc("SendInput")
+	procMapVirtual    = user32.NewProc("MapVirtualKeyW")
+	procMessageBox    = user32.NewProc("MessageBoxW")
+	procGetCursorPos  = user32.NewProc("GetCursorPos")
+	procSetCursorPos  = user32.NewProc("SetCursorPos")
+	procTimePeriodOn  = syscall.NewLazyDLL("winmm.dll").NewProc("timeBeginPeriod")
+	procTimePeriodOff = syscall.NewLazyDLL("winmm.dll").NewProc("timeEndPeriod")
+	procRegSetValue   = advapi32.NewProc("RegSetValueExW")
+	procRegDelValue   = advapi32.NewProc("RegDeleteValueW")
+	procRegCreateKey  = advapi32.NewProc("RegCreateKeyExW")
 )
 
 const (
@@ -80,7 +84,32 @@ func vkEvent(vk uint16, up bool) keyINPUT {
 	return keyINPUT{Type: inputKeyboard, Ki: keybdInput{Vk: vk, Scan: uint16(scan), Flags: f}}
 }
 
-func moveMouse(dx, dy int) { sendMouse(mouse(mMove, int32(dx), int32(dy), 0)) }
+// moveMouse places the cursor exactly dx, dy pixels further. Setting the position directly (instead of
+// sending a relative mouse move) skips Windows' "enhance pointer precision" acceleration, which made
+// the small smooth steps uneven; the app's own curve (pointer.go) is used instead.
+func moveMouse(dx, dy int) {
+	var pt struct{ X, Y int32 }
+	inputMu.Lock()
+	defer inputMu.Unlock()
+	if r, _, _ := procGetCursorPos.Call(uintptr(unsafe.Pointer(&pt))); r == 0 {
+		procSendInput.Call(1, uintptr(unsafe.Pointer(&[]mouseINPUT{mouse(mMove, int32(dx), int32(dy), 0)}[0])), unsafe.Sizeof(mouseINPUT{}))
+		return
+	}
+	procSetCursorPos.Call(uintptr(pt.X+int32(dx)), uintptr(pt.Y+int32(dy)))
+}
+
+// wakeCursor sends a real (tiny, cancelling) mouse move, so Windows shows the cursor even on touch
+// laptops where it hides it until a mouse is used.
+func wakeCursor() { sendMouse(mouse(mMove, 1, 0, 0), mouse(mMove, -1, 0, 0)) }
+
+// precise asks Windows for 1 ms timer accuracy while the cursor is moving (smooth 4 ms steps).
+func precise(on bool) {
+	if on {
+		procTimePeriodOn.Call(1)
+	} else {
+		procTimePeriodOff.Call(1)
+	}
+}
 
 func clickMouse(right bool) {
 	if right {
