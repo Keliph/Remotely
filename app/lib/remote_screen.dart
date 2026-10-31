@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 import 'native.dart';
@@ -28,6 +30,7 @@ class _RemoteScreenState extends State<RemoteScreen> {
   bool _recovering = false;
   bool _pairing = false;
   Timer? _retry;
+  Orientation? _barsFor;
 
   Pc get _pc => widget.pc;
 
@@ -49,7 +52,16 @@ class _RemoteScreenState extends State<RemoteScreen> {
   @override
   void dispose() {
     _retry?.cancel();
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     super.dispose();
+  }
+
+  // Phone turned sideways = touchpad only, so hide the status and navigation bars as well.
+  void _systemBarsFor(Orientation o) {
+    if (_barsFor == o) return;
+    _barsFor = o;
+    SystemChrome.setEnabledSystemUIMode(
+        o == Orientation.landscape ? SystemUiMode.immersiveSticky : SystemUiMode.edgeToEdge);
   }
 
   void _load() => _web.loadRequest(Uri.parse(_pc.remoteUrl));
@@ -154,14 +166,35 @@ class _RemoteScreenState extends State<RemoteScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final mq = MediaQuery.of(context);
+    final orientation = mq.orientation;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _systemBarsFor(orientation);
+    });
+    // Keep the page clear of the status bar, camera cutout and gesture bar (the page itself adds no
+    // extra space inside the app). Same space on both sides, so it stays centred with the camera on one side.
+    final insets = mq.padding;
+    final side = math.max(insets.left, insets.right);
     return Scaffold(
       backgroundColor: const Color(0xFF2A1C16),
-      body: SafeArea(
-        child: Stack(children: [
-          Positioned.fill(child: WebViewWidget(controller: _web)),
-          if (_phase == _Phase.searching) Positioned.fill(child: _searchingView()),
-          if (_phase == _Phase.needsPair) Positioned.fill(child: _needsPairView()),
-        ]),
+      body: DecoratedBox(
+        // the strips behind the system bars use the page's own colours
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFF2A1C16), Color(0xFF4A4240), Color(0xFF6F7275)],
+            stops: [0, .52, 1],
+          ),
+        ),
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(side, insets.top, side, insets.bottom),
+          child: Stack(children: [
+            Positioned.fill(child: WebViewWidget(controller: _web)),
+            if (_phase == _Phase.searching) Positioned.fill(child: _searchingView()),
+            if (_phase == _Phase.needsPair) Positioned.fill(child: _needsPairView()),
+          ]),
+        ),
       ),
     );
   }

@@ -32,12 +32,18 @@
   * { box-sizing: border-box; margin: 0; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
   html, body { height: 100%; }
   html { background-color: #2a1c16; }
+  /* Space kept clear of the phone's status bar, camera cutout and home bar. The sides always match, so
+     the remote stays centred even with the camera on one side. Inside the app these are 0: the app
+     already keeps the page clear of those areas, and counting them twice made the gaps too big. */
   body {
-    padding-left: max(10px, env(safe-area-inset-left)); padding-right: max(10px, env(safe-area-inset-right));
+    --edge: 10px;
+    --top: env(safe-area-inset-top, 0px);
+    --bottom: env(safe-area-inset-bottom, 0px);
+    --side: max(env(safe-area-inset-left, 0px), env(safe-area-inset-right, 0px));
     color: var(--ink); font: 400 16px/1.3 "Outfit", "Urdu", system-ui, sans-serif;
     display: flex; flex-direction: column; gap: 10px;
     height: 100vh; height: 100dvh; overflow: hidden;
-    padding: max(10px, env(safe-area-inset-top)) 10px max(10px, env(safe-area-inset-bottom));
+    padding: max(var(--edge), var(--top)) max(var(--edge), var(--side)) max(var(--edge), var(--bottom));
     background:
       radial-gradient(75% 32% at 32% 64%, rgba(227, 150, 30, .50), transparent 72%),
       radial-gradient(60% 35% at 90% 92%, rgba(160, 172, 184, .40), transparent 70%),
@@ -142,8 +148,8 @@
   .app svg { color: var(--ink); }
 
   /* Phone turned sideways: the whole screen is touchpad */
-  body.landscape { padding: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right))
-                            max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left)); }
+  body.landscape { --edge: 8px; }
+  body.inapp { --top: 0px; --bottom: 0px; --side: 0px; }
   body.landscape .dock { display: none; }
   body.landscape #pad { min-height: 0; border-radius: 30px; }
   #media, .keygrid { grid-auto-columns: minmax(0, 1fr); }
@@ -521,6 +527,7 @@ input.addEventListener("blur", () => setTimeout(applyOrientation, 300));
 addEventListener("orientationchange", () => setTimeout(applyOrientation, 50));
 if (screen.orientation && screen.orientation.addEventListener) screen.orientation.addEventListener("change", applyOrientation);
 applyOrientation();
+if (inApp()) document.body.classList.add("inapp");
 
 // The app shows its own dialog (WebViews don't show confirm()) and answers via brConfirmed().
 window.brConfirmed = what => { if (what === "shutdown") send({ t: "shutdown" }); };
