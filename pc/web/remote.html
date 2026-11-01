@@ -314,6 +314,7 @@ function setBig(line1, line2) {
 }
 
 let toldApp = false, everConnected = false;
+let pageBuild = null; // the PC version this screen was loaded from
 function connect() {
   let opened = false;
   ws = new WebSocket(`ws://${host}/ws?key=${encodeURIComponent(key)}`);
@@ -324,7 +325,15 @@ function connect() {
     opened = true; failures = 0; toldApp = false; setBig("Connected to", pcName);
   };
   ws.onmessage = e => {
-    try { const m = JSON.parse(e.data); if (m.t === "hello") { pcName = m.name; setBig("Connected to", pcName); } } catch (_) {}
+    try {
+      const m = JSON.parse(e.data);
+      if (m.t !== "hello") return;
+      // The PC was updated while this screen stayed open (the app keeps it loaded in the background):
+      // reload, so the new version's screen and features show up straight away.
+      if (pageBuild === null) pageBuild = m.build || "";
+      else if ((m.build || "") !== pageBuild) { location.reload(); return; }
+      pcName = m.name; setBig("Connected to", pcName);
+    } catch (_) {}
   };
   ws.onclose = () => {
     if (!opened) failures++;

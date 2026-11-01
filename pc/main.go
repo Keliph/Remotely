@@ -546,7 +546,7 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("phone disconnected %s", r.RemoteAddr)
 	}()
 
-	_ = c.WriteJSON(map[string]any{"t": "hello", "name": hostname, "v": version})
+	_ = c.WriteJSON(map[string]any{"t": "hello", "name": hostname, "v": version, "build": build})
 
 	for {
 		_, msg, err := c.ReadMessage()
