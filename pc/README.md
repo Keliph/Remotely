@@ -7,7 +7,8 @@ Needs Go 1.24+. From this folder:
 
     GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-H windowsgui -s -w" -o dist/BlanketRemote.exe .
 
-`rsrc_windows_amd64.syso` (icon + manifest) is picked up automatically. To change the icon:
+`rsrc_windows_amd64.syso` (icon + manifest) is picked up automatically. To change the icon, edit and run
+`python3 tool/make_icons.py` (writes the Windows, Mac and Android icons), then:
 
     go install github.com/akavel/rsrc@latest
     rsrc -manifest res/app.manifest -ico res/icon.ico -arch amd64 -o rsrc_windows_amd64.syso
