@@ -41,6 +41,15 @@ jobs:
       - name: Unit tests
         run: flutter test 2>&1 | tee -a "$RUNNER_TEMP/build.log"
 
+      # The tests also draw the app's first screen to PNG files: download "app-screens" from the run to see them.
+      - name: Keep screenshots of the app's screens
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-screens
+          path: app/build/screens/
+          if-no-files-found: ignore
+
       # Every build must be signed with the same key, or Android refuses to install an update over the
       # app already on the phone ("package appears to be invalid"). The key lives in the repo secret
       # ANDROID_DEBUG_KEYSTORE (base64 keystore, alias androiddebugkey, password android), never in the code.

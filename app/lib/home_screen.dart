@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'native.dart';
 import 'pc_link.dart';
 import 'remote_screen.dart';
-import 'ui.dart';
+import 'scan_view.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -234,120 +234,16 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final status = _searching
-        ? 'Looking for your PC…'
-        : _pcs.isEmpty
-            ? 'No PC found on this Wi-Fi'
-            : 'Tap a PC to control it';
-
     return Scaffold(
-      body: WarmBackground(
-        child: SafeArea(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(28, 28, 28, 6),
-                child: Text('Blanket Remote',
-                    style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w300, color: ink, height: 1.1)),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(28, 0, 28, 18),
-                child: Row(children: [
-                  if (_searching) ...[
-                    const SizedBox(
-                        width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 1.6, color: ink2)),
-                    const SizedBox(width: 10),
-                  ],
-                  Text(status, style: const TextStyle(fontSize: 15, color: ink2)),
-                ]),
-              ),
-              Expanded(
-                child: RefreshIndicator(
-                  onRefresh: _scan,
-                  color: const Color(0xFF1D1410),
-                  backgroundColor: Colors.white,
-                  child: ListView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.fromLTRB(14, 0, 14, 20),
-                    children: [
-                      for (final pc in _pcs) ...[_pcCard(pc), const SizedBox(height: 10)],
-                      if (!_searching && _pcs.isEmpty) _emptyCard(),
-                    ],
-                  ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
-                child: Row(children: [
-                  Expanded(
-                    child: PillButton(
-                        label: 'Search again', icon: Icons.refresh_rounded, onPressed: _searching ? null : _scan),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: PillButton(label: 'Add by address', icon: Icons.add_rounded, onPressed: _addByIp),
-                  ),
-                ]),
-              ),
-            ],
-          ),
-        ),
+      body: ScanView(
+        pcs: _pcs,
+        searching: _searching,
+        busyId: _busyId,
+        onTap: _tap,
+        onForget: _forget,
+        onSearch: _scan,
+        onAdd: _addByIp,
       ),
-    );
-  }
-
-  Widget _pcCard(Pc pc) {
-    final busy = _busyId == pc.id;
-    final String sub;
-    if (busy) {
-      sub = 'Click Yes on your PC screen';
-    } else if (!pc.online) {
-      sub = 'Not on this Wi-Fi right now';
-    } else if (pc.paired) {
-      sub = 'Ready';
-    } else {
-      sub = 'Tap to connect';
-    }
-    return Glass(
-      onTap: busy ? null : () => _tap(pc),
-      onLongPress: pc.paired ? () => _forget(pc) : null,
-      child: Row(children: [
-        Container(
-          width: 48,
-          height: 48,
-          decoration: const BoxDecoration(color: pill, shape: BoxShape.circle),
-          child: Icon(pc.isMac ? Icons.laptop_mac_rounded : Icons.laptop_windows_rounded,
-              color: pc.online ? ink : ink3, size: 24),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(pc.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 19, fontWeight: FontWeight.w400, color: pc.online ? ink : ink3)),
-            const SizedBox(height: 2),
-            Text(sub, style: const TextStyle(fontSize: 14, color: ink2)),
-          ]),
-        ),
-        if (busy)
-          const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2, color: ink))
-        else
-          Icon(Icons.chevron_right_rounded, color: pc.online ? ink2 : ink3),
-      ]),
-    );
-  }
-
-  Widget _emptyCard() {
-    return const Glass(
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('Get your PC ready', style: TextStyle(fontSize: 19, color: ink)),
-        SizedBox(height: 10),
-        Text('1. Open Blanket Remote on your PC or Mac.', style: TextStyle(fontSize: 15, color: ink2, height: 1.5)),
-        Text('2. Keep this phone on the same Wi-Fi.', style: TextStyle(fontSize: 15, color: ink2, height: 1.5)),
-        Text('3. Pull down here to search again.', style: TextStyle(fontSize: 15, color: ink2, height: 1.5)),
-      ]),
     );
   }
 }
