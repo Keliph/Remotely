@@ -341,6 +341,8 @@ func autostartEnabled() bool {
 
 // ---- setup page hooks ----
 
+func isStoreVersion() bool { return false }
+
 func platformInit() {
 	if C.br_trusted(1) == 0 { // shows macOS's "allow accessibility" request the first time
 		log.Printf("accessibility permission not granted yet")

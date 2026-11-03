@@ -85,6 +85,25 @@ def write_all(c=COLOURS):
     for n in (16, 32, 128, 256, 512):
         tile_icon(n, c).save(iconset / f"icon_{n}x{n}.png", optimize=True)
         tile_icon(n * 2, c).save(iconset / f"icon_{n}x{n}@2x.png", optimize=True)
+    # Microsoft Store package (pc/msix): file names carry the size qualifiers Windows picks from
+    store = res.parent / "msix" / "Assets"
+    store.mkdir(parents=True, exist_ok=True)
+
+    def centred(w, h, icon_px):
+        canvas = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+        icon = tile_icon(icon_px, c)
+        canvas.alpha_composite(icon, ((w - icon_px) // 2, (h - icon_px) // 2))
+        return canvas
+
+    for scale in (100, 200):
+        f = scale / 100
+        tile_icon(round(44 * f), c).save(store / f"Square44x44Logo.scale-{scale}.png", optimize=True)
+        centred(round(150 * f), round(150 * f), round(104 * f)).save(store / f"Square150x150Logo.scale-{scale}.png", optimize=True)
+        centred(round(310 * f), round(150 * f), round(104 * f)).save(store / f"Wide310x150Logo.scale-{scale}.png", optimize=True)
+        tile_icon(round(50 * f), c).save(store / f"StoreLogo.scale-{scale}.png", optimize=True)
+    for n in (16, 24, 32, 48, 256):
+        tile_icon(n, c).save(store / f"Square44x44Logo.targetsize-{n}.png", optimize=True)
+        tile_icon(n, c).save(store / f"Square44x44Logo.altform-unplated_targetsize-{n}.png", optimize=True)
     # Android
     icons = ROOT / "app" / "assets" / "icon"
     big.save(icons / "icon_1024.png", optimize=True)

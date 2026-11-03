@@ -33,6 +33,9 @@ func displayName() string {
 	return h
 }
 
+// BR_TEST_STORE=1 shows the page as the Microsoft Store version would.
+func isStoreVersion() bool { return os.Getenv("BR_TEST_STORE") == "1" }
+
 func platformInit()                        {}
 func platformNotices() []map[string]string { return nil }
 func platformFix(what string)              {}

@@ -140,6 +140,36 @@ jobs:
           gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/comments" \
             -f body="$(printf '**%s failed**\n\n```\n%s\n```' "$GITHUB_JOB" "$log")" > /dev/null
 
+  # The Microsoft Store package. Built from the same exe, tested by installing it on a Windows machine, and put
+  # on the "store" pre-release: that file is uploaded in Partner Center (the Store signs it).
+  store:
+    name: PC app (Microsoft Store package)
+    needs: windows
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: BlanketRemote-windows
+          path: exe
+
+      - name: Build the Store package and test-install it
+        shell: pwsh
+        run: pc/msix/build.ps1 -Exe exe/BlanketRemote.exe -Out BlanketRemote-Store.msix -Version "1.0.${{ github.run_number }}.0" -Test
+
+      - name: Put it on the "store" pre-release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view store >/dev/null 2>&1 || \
+            gh release create store --prerelease --title "Microsoft Store package (upload in Partner Center)" \
+              --notes "Upload BlanketRemote-Store.msix in Partner Center. It only installs from the Store, not by double-clicking."
+          gh release upload store BlanketRemote-Store.msix --clobber
+
   mac:
     name: PC app (Mac)
     runs-on: macos-latest

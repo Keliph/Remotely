@@ -36,3 +36,11 @@ Settings + log live in `%APPDATA%\BlanketRemote\` (`config.json`, `log.txt`).
   `{"t":"move","dx":5,"dy":-3}` · `{"t":"click","b":"left|right"}` · `{"t":"scroll","n":2}` ·
   `{"t":"type","text":"…"}` · `{"t":"key","k":"playpause"}` · `{"t":"hotkey","keys":["alt","tab"]}` · `{"t":"shutdown"}`
 - `GET /api/ping` → `{"app":"BlanketRemote","id":…}` to check a remembered address still is the same PC.
+
+## Microsoft Store version
+
+`msix/` holds the Store package: `AppxManifest.xml` (start at login, firewall rules for every network type),
+`identity.json` (the values from Partner Center → Product identity) and the icons. The cloud build runs
+`msix/build.ps1`, test-installs the package on Windows, and puts `BlanketRemote-Store.msix` on the `store`
+pre-release for uploading in Partner Center. The app notices when it runs from the Store package and lets
+Windows handle startup and the firewall.

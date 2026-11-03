@@ -160,8 +160,9 @@
     </details>
     <div class="sets">
       <div class="set">
-        <div><span class="t" id="autoLabel">Start with Windows</span><small>Keeps the remote ready every time the PC turns on.</small></div>
-        <label class="switch"><input type="checkbox" id="auto" aria-labelledby="autoLabel"><span></span></label>
+        <div><span class="t" id="autoLabel">Start with Windows</span><small id="autoHelp">Keeps the remote ready every time the PC turns on.</small></div>
+        <label class="switch" id="autoSwitch"><input type="checkbox" id="auto" aria-labelledby="autoLabel"><span></span></label>
+        <button class="k" id="autoSettings" hidden>Open Startup apps</button>
       </div>
       <div class="set">
         <div><span class="t">New key</span><small>Disconnects every phone. Use it if someone else got your QR code.</small></div>
@@ -197,8 +198,12 @@ async function refresh() {
   $("pcname").textContent = d.name;
   $("ver").textContent = "v" + d.version + (d.build ? " (" + d.build + ")" : "");
   const mac = d.os === "darwin";
-  $("autoLabel").textContent = mac ? "Start with your Mac" : "Start with Windows";
-  $("helpWin").hidden = mac; $("helpMac").hidden = !mac;
+  // Microsoft Store version: Windows runs it at startup (switched in Settings) and its firewall rules come with it
+  const store = !!d.store;
+  $("autoLabel").textContent = store ? "Starts with Windows" : mac ? "Start with your Mac" : "Start with Windows";
+  if (store) $("autoHelp").textContent = "Switch it off any time in Windows Settings → Startup apps.";
+  $("autoSwitch").hidden = store; $("autoSettings").hidden = !store;
+  $("helpWin").hidden = mac || store; $("helpMac").hidden = !mac;
   const nkey = JSON.stringify(d.notices || []);
   if (nkey !== lastNotices) {
     lastNotices = nkey;
@@ -261,6 +266,7 @@ $("fwfix").onclick = async e => {
   await post("/api/fix", { what: "firewall" });
   e.target.disabled = false; e.target.textContent = "fix the firewall"; refresh();
 };
+$("autoSettings").onclick = () => post("/api/fix", { what: "startup" });
 $("auto").onchange = async e => { await post("/api/autostart", { on: e.target.checked }); refresh(); };
 $("newkey").onclick = async () => {
   if (!confirm("Make a new key? Every phone will need to scan the new QR code.")) return;

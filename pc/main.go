@@ -407,6 +407,7 @@ func setupInfoHandler(w http.ResponseWriter, r *http.Request) {
 		"build":     build,
 		"os":        runtime.GOOS,
 		"notices":   platformNotices(),
+		"store":     isStoreVersion(),
 	})
 }
 

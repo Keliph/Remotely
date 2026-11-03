@@ -30,7 +30,21 @@ var (
 	procRegSetValue   = advapi32.NewProc("RegSetValueExW")
 	procRegDelValue   = advapi32.NewProc("RegDeleteValueW")
 	procRegCreateKey  = advapi32.NewProc("RegCreateKeyExW")
+	procPackageName   = syscall.NewLazyDLL("kernel32.dll").NewProc("GetCurrentPackageFullName")
 )
+
+// storeVersion: running as the Microsoft Store (MSIX) version. Its package then handles starting with
+// Windows (a startup task) and the firewall (rules in the package manifest, for every network type).
+var storeVersion = func() bool {
+	if procPackageName.Find() != nil {
+		return false
+	}
+	var n uint32
+	r, _, _ := procPackageName.Call(uintptr(unsafe.Pointer(&n)), 0)
+	return r != 15700 // APPMODEL_ERROR_NO_PACKAGE: a plain exe
+}()
+
+func isStoreVersion() bool { return storeVersion }
 
 const (
 	inputMouse    = 0
@@ -191,6 +205,16 @@ func openRunKey() (syscall.Handle, error) {
 }
 
 func setAutostart(on bool) error {
+	if storeVersion {
+		// The package's startup task does it (switched off in Windows Settings → Startup apps). Remove any
+		// entry an earlier downloaded .exe left, so the two don't both start at login.
+		_ = setRunKey(false)
+		return nil
+	}
+	return setRunKey(on)
+}
+
+func setRunKey(on bool) error {
 	h, err := openRunKey()
 	if err != nil {
 		return err
@@ -218,6 +242,9 @@ func setAutostart(on bool) error {
 }
 
 func autostartEnabled() bool {
+	if storeVersion {
+		return true
+	}
 	h, err := openRunKey()
 	if err != nil {
 		return false
@@ -254,7 +281,7 @@ func platformNotices() []map[string]string {
 	cfgMu.Lock()
 	fixed := cfg.FirewallFixed
 	cfgMu.Unlock()
-	if fixed || !onPublicNet.Load() {
+	if fixed || storeVersion || !onPublicNet.Load() {
 		return nil
 	}
 	return []map[string]string{{
@@ -267,6 +294,10 @@ func platformNotices() []map[string]string {
 // platformFix("firewall") removes any rule Windows made when the popup was dismissed (those block the app)
 // and allows Blanket Remote on every network type. Needs admin, so it asks through one UAC prompt.
 func platformFix(what string) {
+	if what == "startup" {
+		openBrowser("ms-settings:startupapps")
+		return
+	}
 	if what != "firewall" {
 		return
 	}
