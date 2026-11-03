@@ -158,9 +158,12 @@ jobs:
 
       - name: Build the Store package and test-install it
         shell: pwsh
-        run: pc/msix/build.ps1 -Exe exe/BlanketRemote.exe -Out BlanketRemote-Store.msix -Version "1.0.${{ github.run_number }}.0" -Test
+        run: |
+          pc/msix/build.ps1 -Exe exe/BlanketRemote.exe -Out BlanketRemote-Store.msix -Version "1.0.${{ github.run_number }}.0" -Test *>&1 | Tee-Object store-test-log.txt
+          if (-not (Select-String -Path store-test-log.txt -Pattern "Package test passed" -Quiet)) { exit 1 }
 
-      - name: Put it on the "store" pre-release
+      - name: Put it (and the test log) on the "store" pre-release
+        if: always()
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -168,7 +171,8 @@ jobs:
           gh release view store >/dev/null 2>&1 || \
             gh release create store --prerelease --title "Microsoft Store package (upload in Partner Center)" \
               --notes "Upload BlanketRemote-Store.msix in Partner Center. It only installs from the Store, not by double-clicking."
-          gh release upload store BlanketRemote-Store.msix --clobber
+          [ -f store-test-log.txt ] && gh release upload store store-test-log.txt --clobber
+          [ "${{ job.status }}" = "success" ] && gh release upload store BlanketRemote-Store.msix --clobber || true
 
   mac:
     name: PC app (Mac)
