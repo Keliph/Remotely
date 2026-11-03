@@ -2,9 +2,17 @@
   "price": "Rs 100",
   "note": "Pay from any bank app, JazzCash or Easypaisa: Send money → Bank account or Raast → Meezan Bank.",
   "methods": [
-    { "name": "Meezan Bank · account number", "number": "15010116035245", "title": "AIMAL KHAN / ABDUL GHAFFAR KHAN" },
-    { "name": "IBAN (also for Raast)", "number": "PK83 MEZN 0015 0101 1603 5245", "title": "AIMAL KHAN / ABDUL GHAFFAR KHAN" }
+    {
+      "name": "Meezan Bank · account number",
+      "number": "15010116035245",
+      "title": "AIMAL KHAN / ABDUL GHAFFAR KHAN"
+    },
+    {
+      "name": "IBAN (also for Raast)",
+      "number": "PK83 MEZN 0015 0101 1603 5245",
+      "title": "AIMAL KHAN / ABDUL GHAFFAR KHAN"
+    }
   ],
   "raast_qr": "0002020102110202000424PK83MEZN001501011603524510045206",
-  "whatsapp": ""
+  "whatsapp": "923038039729"
 }
