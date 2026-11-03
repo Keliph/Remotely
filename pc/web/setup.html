@@ -153,6 +153,9 @@
             color: var(--ink); font: inherit; font-size: 14px; }
   #ubCode::placeholder { color: var(--ink-3); }
   #ubForm .solid { height: 44px; padding: 0 18px; }
+  .ub-note { font-size: 13px; line-height: 1.45; color: var(--ink-3); }
+  .ub-qr { display: flex; align-items: center; gap: 12px; font-size: 13px; line-height: 1.4; color: var(--ink-2); }
+  .ub-qr img { width: 112px; height: 112px; flex: none; padding: 6px; border-radius: 16px; background: #fff; image-rendering: pixelated; }
   #ubMsg { min-height: 16px; font-size: 13px; color: #ffd9b8; }
   @media (max-width: 760px) { .ub-grid { grid-template-columns: 1fr; } .ub-head { flex-direction: column; } .ub-code { text-align: left; } }
 
@@ -176,7 +179,9 @@
       <div class="ub-code"><span>PC code</span><b id="ubPc">…</b></div>
     </div>
     <div class="ub-grid">
-      <div class="ub-step"><span><i>1</i><span>Send <b class="price">Rs 100</b> to</span></span><div id="ubPay"></div></div>
+      <div class="ub-step"><span><i>1</i><span>Send <b class="price">Rs 100</b> to</span></span><div id="ubPay"></div>
+        <div class="ub-note" id="ubNote" hidden></div>
+        <div class="ub-qr" id="ubQrBox" hidden><img id="ubQr" alt="Raast payment QR code"><span>Or scan this with your bank app, JazzCash or Easypaisa</span></div></div>
       <div class="ub-step"><span><i>2</i><span>Send the payment screenshot and your PC code on WhatsApp</span></span>
         <a class="solid" id="ubWa" target="_blank" rel="noopener">Open WhatsApp</a></div>
       <div class="ub-step"><span><i>3</i><span>Paste the unlock code you get back</span></span>
@@ -277,6 +282,7 @@ async function refresh() {
     $("others").innerHTML = "";
     (d.others || []).forEach(u => { const p = document.createElement("div"); p.textContent = u; $("others").appendChild(p); });
   }
+  payQr = d.pay_qr || "";
   showLicense(d.license);
   if (document.activeElement !== $("auto")) $("auto").checked = d.autostart;
   const n = d.phones;
@@ -309,7 +315,7 @@ layoutCore();
 
 
 // ---- free trial / unlock ----
-let lic = null, lastPay = "", boxOpen = false;
+let lic = null, lastPay = "", boxOpen = false, payQr = "";
 function showLicense(l) {
   if (!l) return;
   lic = l;
@@ -337,6 +343,8 @@ function showLicense(l) {
       box.appendChild(d);
     });
     if (!(pay.methods || []).length) box.innerHTML = '<div class="ub-pay"><div class="t">Payment details are on their way.</div></div>';
+    $("ubNote").textContent = pay.note || ""; $("ubNote").hidden = !pay.note;
+    $("ubQrBox").hidden = !payQr; if (payQr) $("ubQr").src = payQr;
     const text = `Assalam o Alaikum! I've paid ${price} for Blanket Remote. My PC code is ${l.pc}`;
     $("ubWa").href = `https://wa.me/${String(pay.whatsapp || "").replace(/\D/g, "")}?text=${encodeURIComponent(text)}`;
     $("ubWa").hidden = !pay.whatsapp;

@@ -26,6 +26,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	qrcode "github.com/skip2/go-qrcode"
 )
 
 const trialLength = 72 * time.Hour
@@ -49,6 +51,21 @@ var payInfo = func() json.RawMessage {
 	}
 	return b
 }()
+
+// payQR: the Raast payment QR (bank apps, JazzCash, Easypaisa scan it) as an image for the PC page.
+func payQR() string {
+	var p struct {
+		RaastQR string `json:"raast_qr"`
+	}
+	if json.Unmarshal(payInfo, &p) != nil || p.RaastQR == "" {
+		return ""
+	}
+	png, err := qrcode.Encode(p.RaastQR, qrcode.Medium, 384)
+	if err != nil {
+		return ""
+	}
+	return "data:image/png;base64," + base64.StdEncoding.EncodeToString(png)
+}
 
 var crock = base32.NewEncoding("0123456789ABCDEFGHJKMNPQRSTVWXYZ").WithPadding(base32.NoPadding)
 

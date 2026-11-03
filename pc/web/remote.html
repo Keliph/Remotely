@@ -208,6 +208,7 @@
   .payrow .t { font-size: 13px; color: var(--ink-2); }
   .payrow button { flex: none; height: 38px; padding: 0 16px; border-radius: 999px; font-size: 14px; background: rgba(255, 255, 255, .12); }
   .payrow button:active, .pccode button:active { transform: scale(.96); }
+  .paynote { padding: 0 12px; font-size: 13px; line-height: 1.45; color: var(--ink-3); }
   #waBtn { min-height: 50px; border-radius: 999px; font-weight: 500; }
   #unlockCode { flex: 1; min-width: 0; height: 50px; padding: 0 20px; border: 0; border-radius: 999px; outline: none; background: var(--pill);
                 color: var(--ink); font: inherit; font-size: 16px; -webkit-user-select: text; user-select: text; }
@@ -347,6 +348,7 @@
   <section class="dock">
     <div class="step"><i>1</i><span>Send <b class="price">Rs 100</b> to</span></div>
     <div id="payList"></div>
+    <div class="paynote" id="payNote" hidden></div>
     <div class="step"><i>2</i><span>Send the payment screenshot and your PC code</span></div>
     <button class="k solid" id="waBtn">Send on WhatsApp</button>
     <div class="step"><i>3</i><span>Paste the unlock code you get back</span></div>
@@ -463,6 +465,7 @@ function applyLicense(l) {
     row.appendChild(info); row.appendChild(b); list.appendChild(row);
   });
   if (!(pay.methods || []).length) list.innerHTML = '<div class="payrow"><div><div class="t">Payment details are on their way. Message us on WhatsApp.</div></div></div>';
+  $id("payNote").textContent = pay.note || ""; $id("payNote").hidden = !pay.note;
   $id("waBtn").hidden = !pay.whatsapp;
   // last day of the trial: a gentle reminder in the tips
   if (l.state === "trial" && l.hours_left <= 24) {

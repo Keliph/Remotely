@@ -413,6 +413,7 @@ func setupInfoHandler(w http.ResponseWriter, r *http.Request) {
 		"notices":   platformNotices(),
 		"store":     isStoreVersion(),
 		"license":   licenseInfo(),
+		"pay_qr":    payQR(),
 	})
 }
 
