@@ -138,12 +138,16 @@ def patch_signing():
 def copy_icons():
     src = APP / "assets" / "icon" / "android"
     count = 0
-    for icon in src.glob("mipmap-*/ic_launcher.png"):
-        dest = ANDROID / "res" / icon.parent.name / "ic_launcher.png"
+    # classic icons + adaptive layers (mipmap-*) and the adaptive icon definition (mipmap-anydpi-v26),
+    # replacing the Flutter logo the template comes with
+    for icon in sorted(src.glob("mipmap-*/*")):
+        dest = ANDROID / "res" / icon.parent.name / icon.name
         dest.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(icon, dest)
         count += 1
-    print(f"{count} launcher icons copied")
+    if count < 16:
+        sys.exit(f"only {count} launcher icon files found in {src}: the app would show the Flutter logo")
+    print(f"{count} launcher icon files copied")
 
 
 def drop_template_test():
