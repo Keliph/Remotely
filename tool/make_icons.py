@@ -10,11 +10,11 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 
 # colours, matched to the remote's amber glass look
 TILE = (34, 24, 20, 255)          # warm near-black, like the remote's background
-BACK = (205, 98, 28, 255)         # blanket fold behind the phone (deep orange)
-FRONT = (239, 154, 82, 255)       # blanket fold in front (the touchpad's amber, #ef9a52)
+BACK = (214, 70, 0, 255)          # blanket fold behind the phone (deep red-orange)
+FRONT = (255, 122, 0, 255)        # blanket fold in front (bright orange)
 PHONE = (246, 238, 228, 255)      # phone body, warm white
 SCREEN = TILE
-DOT = (255, 196, 120, 255)        # "connected" light on the screen
+DOT = (255, 160, 30, 255)         # "connected" light on the screen
 
 
 def scene(d, k, ox, oy, width, layer, c):
