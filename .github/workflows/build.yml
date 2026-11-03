@@ -50,6 +50,19 @@ jobs:
           path: app/build/screens/
           if-no-files-found: ignore
 
+      # ...and on a separate pre-release called "screens", which is easier to download from anywhere.
+      - name: Put the screenshots on the "screens" release
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          [ -d build/screens ] || exit 0
+          (cd build/screens && zip -q "$RUNNER_TEMP/screens.zip" *.png)
+          gh release view screens >/dev/null 2>&1 || \
+            gh release create screens --prerelease --title "App screenshots (for development)" \
+              --notes "Drawn by the app's tests on every build. Not something to install."
+          gh release upload screens "$RUNNER_TEMP/screens.zip" --clobber
+
       # Every build must be signed with the same key, or Android refuses to install an update over the
       # app already on the phone ("package appears to be invalid"). The key lives in the repo secret
       # ANDROID_DEBUG_KEYSTORE (base64 keystore, alias androiddebugkey, password android), never in the code.
