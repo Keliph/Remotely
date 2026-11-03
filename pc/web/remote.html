@@ -29,6 +29,7 @@
     --solid: #fff;                         /* the one white button per panel */
     --solid-ink: #1d1410;
   }
+  [hidden] { display: none !important; }
   * { box-sizing: border-box; margin: 0; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
   html, body { height: 100%; }
   html { background-color: #2a1c16; }
@@ -165,8 +166,55 @@
   body.landscape { --edge: 8px; }
   body.inapp { --top: 0px; --bottom: 0px; --side: 0px; }
   body.landscape .dock { display: none; }
+  body.landscape #lock .dock { display: flex; }
   body.landscape #pad { min-height: 0; border-radius: 30px; }
   #media, .keygrid { grid-auto-columns: minmax(0, 1fr); }
+
+
+  /* ---- free trial over: how to unlock (covers the remote) ---- */
+  #lock { position: fixed; inset: 0; z-index: 50; display: none; flex-direction: column; gap: 10px; overflow-y: auto;
+          padding: max(var(--edge), var(--top)) max(var(--edge), var(--side)) max(var(--edge), var(--bottom));
+          background:
+            radial-gradient(75% 32% at 32% 64%, rgba(227, 150, 30, .50), transparent 72%),
+            linear-gradient(180deg, #2a1c16 0%, #4a4240 52%, #6f7275 100%); }
+  body.locked #lock { display: flex; }
+  body.locked { overflow: hidden; }
+  .lockpad { position: relative; flex: none; border-radius: 42px; overflow: hidden; padding: 26px 26px 24px; isolation: isolate;
+             background: linear-gradient(150deg, #ef9a52 0%, #e8b878 26%, #e9d7b8 58%, #ddc9a4 100%);
+             box-shadow: inset 0 1px 0 rgba(255, 255, 255, .35), 0 24px 48px rgba(0, 0, 0, .28);
+             text-shadow: 0 1px 10px rgba(90, 40, 0, .28); }
+  .lockpad::before { content: ""; position: absolute; inset: 0; z-index: -1;
+                     background: linear-gradient(90deg, rgba(236, 104, 34, .65), transparent 30%),
+                                 radial-gradient(60% 70% at 30% 40%, rgba(110, 30, 6, .55), transparent 70%),
+                                 radial-gradient(70% 45% at 30% 100%, rgba(232, 160, 24, .9), transparent 75%); }
+  .lockpad .label { font-size: 15px; opacity: .9; }
+  .lockpad h2 { margin-top: 14px; font-size: 27px; font-weight: 300; line-height: 1.12; letter-spacing: -.01em; }
+  .lockpad p { margin-top: 8px; font-size: 15px; line-height: 1.4; color: var(--ink-2); }
+  .lockpad b { font-weight: 500; color: var(--ink); }
+  .pccode { margin-top: 18px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .pccode .sub { display: block; font-size: 12.5px; color: var(--ink-2); }
+  .pccode .code { font-size: 25px; font-weight: 400; letter-spacing: .06em; }
+  .pccode button { height: 38px; padding: 0 16px; border-radius: 999px; font-size: 14px; background: rgba(255, 255, 255, .24);
+                   box-shadow: inset 0 1px 0 rgba(255, 255, 255, .4); }
+  #lock .dock { flex: none; }
+  .step { display: flex; align-items: center; gap: 10px; padding: 6px 8px 0; font-size: 14.5px; color: var(--ink-2); }
+  .step i { font-style: normal; flex: none; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center;
+            font-size: 12.5px; color: var(--ink); background: rgba(255, 255, 255, .16); }
+  .step b { font-weight: 500; color: var(--ink); }
+  .payrow { display: flex; align-items: center; gap: 10px; padding: 10px 10px 10px 18px; border-radius: 24px; background: var(--pill); }
+  .payrow div { flex: 1; min-width: 0; }
+  .payrow .m { font-size: 12.5px; color: var(--ink-3); }
+  .payrow .n { font-size: 17px; letter-spacing: .02em; overflow-wrap: anywhere; }
+  .payrow .t { font-size: 13px; color: var(--ink-2); }
+  .payrow button { flex: none; height: 38px; padding: 0 16px; border-radius: 999px; font-size: 14px; background: rgba(255, 255, 255, .12); }
+  .payrow button:active, .pccode button:active { transform: scale(.96); }
+  #waBtn { min-height: 50px; border-radius: 999px; font-weight: 500; }
+  #unlockCode { flex: 1; min-width: 0; height: 50px; padding: 0 20px; border: 0; border-radius: 999px; outline: none; background: var(--pill);
+                color: var(--ink); font: inherit; font-size: 16px; -webkit-user-select: text; user-select: text; }
+  #unlockCode::placeholder { color: var(--ink-3); }
+  #unlockCode:focus { box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .5); }
+  #unlockBtn { height: 50px; padding: 0 22px; border-radius: 999px; font-weight: 500; }
+  #unlockMsg { min-height: 18px; padding: 0 10px 2px; font-size: 13.5px; color: #ffd9b8; }
 
   button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
   @media (max-height: 660px) { .panel { height: 148px; } #keys { --d: 148px; } .k { min-height: 0; } .clicks { height: 42px; }
@@ -286,6 +334,30 @@
   </section>
 </div>
 
+<div id="lock" aria-live="polite">
+  <section class="lockpad">
+    <div class="label">Blanket Remote</div>
+    <h2>Your free trial has ended</h2>
+    <p>Unlock it on <b id="lockPc">your PC</b> for <b class="price">Rs 100</b>, one time. It stays unlocked for good.</p>
+    <div class="pccode">
+      <div><span class="sub">Your PC code</span><span class="code" id="pcCode">…</span></div>
+      <button id="copyPc">Copy</button>
+    </div>
+  </section>
+  <section class="dock">
+    <div class="step"><i>1</i><span>Send <b class="price">Rs 100</b> to</span></div>
+    <div id="payList"></div>
+    <div class="step"><i>2</i><span>Send the payment screenshot and your PC code</span></div>
+    <button class="k solid" id="waBtn">Send on WhatsApp</button>
+    <div class="step"><i>3</i><span>Paste the unlock code you get back</span></div>
+    <form class="typerow" id="unlockForm" autocomplete="off">
+      <input id="unlockCode" placeholder="Paste unlock code" autocapitalize="off" autocorrect="off" spellcheck="false">
+      <button class="solid" id="unlockBtn">Unlock</button>
+    </form>
+    <div id="unlockMsg"></div>
+  </section>
+</div>
+
 <script>
 // host/key come from the URL (QR code) — or from the phone app, which loads this same page
 const params = new URLSearchParams(location.search);
@@ -327,12 +399,15 @@ function connect() {
   ws.onmessage = e => {
     try {
       const m = JSON.parse(e.data);
+      if (m.t === "license") { applyLicense(m.lic); return; }
+      if (m.t === "unlock-bad") { unlockMsg("That code doesn't match this PC. Check it was made for code " + (lic && lic.pc) + "."); return; }
       if (m.t !== "hello") return;
       // The PC was updated while this screen stayed open (the app keeps it loaded in the background):
       // reload, so the new version's screen and features show up straight away.
       if (pageBuild === null) pageBuild = m.build || "";
       else if ((m.build || "") !== pageBuild) { location.reload(); return; }
       pcName = m.name; setBig("Connected to", pcName);
+      applyLicense(m.lic);
     } catch (_) {}
   };
   ws.onclose = () => {
@@ -348,6 +423,66 @@ function connect() {
   };
 }
 function send(obj) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(obj)); }
+
+// ---- free trial / unlock ----
+let lic = null, wasLocked = false, trialTip = null;
+const $id = id => document.getElementById(id);
+function unlockMsg(t) { $id("unlockMsg").textContent = t || ""; }
+function copyText(text, btn) {
+  const done = () => { const old = btn.textContent; btn.textContent = "Copied ✓"; setTimeout(() => btn.textContent = old, 1500); };
+  if (navigator.clipboard && window.isSecureContext) { navigator.clipboard.writeText(text).then(done, () => {}); return; }
+  const ta = document.createElement("textarea");   // the page is plain http, where the clipboard API is off
+  ta.value = text; ta.setAttribute("readonly", ""); ta.style.cssText = "position:fixed;top:0;left:0;opacity:0";
+  document.body.appendChild(ta); ta.select(); ta.setSelectionRange(0, text.length);
+  try { document.execCommand("copy"); done(); } catch (e) {}
+  ta.remove();
+}
+function openOutside(url) {
+  if (inApp()) { window.BRApp.postMessage(JSON.stringify({ open: url })); return; }
+  if (!window.open(url, "_blank")) location.href = url;
+}
+function applyLicense(l) {
+  if (!l) return;
+  lic = l;
+  const pay = l.pay || {}, price = pay.price || "Rs 100";
+  const locked = l.state === "expired";
+  document.body.classList.toggle("locked", locked);
+  if (wasLocked && l.state === "unlocked") { setBig("Unlocked ✓ Thank you!", pcName); setTimeout(() => setBig("Connected to", pcName), 4000); }
+  wasLocked = locked;
+  document.querySelectorAll("#lock .price").forEach(b => b.textContent = price);
+  $id("lockPc").textContent = pcName; $id("pcCode").textContent = l.pc;
+  const list = $id("payList"); list.innerHTML = "";
+  (pay.methods || []).forEach(p => {
+    const row = document.createElement("div"); row.className = "payrow";
+    const info = document.createElement("div");
+    [["m", p.name], ["n", p.number], ["t", p.title]].forEach(([c, t]) => {
+      if (!t) return; const d = document.createElement("div"); d.className = c; d.textContent = t; info.appendChild(d);
+    });
+    const b = document.createElement("button"); b.textContent = "Copy";
+    b.onclick = () => { buzz(); copyText((p.number || "").replace(/\s/g, ""), b); };
+    row.appendChild(info); row.appendChild(b); list.appendChild(row);
+  });
+  if (!(pay.methods || []).length) list.innerHTML = '<div class="payrow"><div><div class="t">Payment details are on their way. Message us on WhatsApp.</div></div></div>';
+  $id("waBtn").hidden = !pay.whatsapp;
+  // last day of the trial: a gentle reminder in the tips
+  if (l.state === "trial" && l.hours_left <= 24) {
+    if (!trialTip) { trialTip = document.createElement("span"); hint.appendChild(trialTip); }
+    trialTip.textContent = `Free trial ends in ${l.hours_left} hour${l.hours_left === 1 ? "" : "s"}`;
+  } else if (trialTip) { trialTip.remove(); trialTip = null; }
+}
+$id("copyPc").onclick = e => { buzz(); copyText(lic ? lic.pc : "", e.target); };
+$id("waBtn").onclick = () => {
+  buzz();
+  const pay = (lic && lic.pay) || {};
+  const text = `Assalam o Alaikum! I've paid ${pay.price || "Rs 100"} for Blanket Remote. My PC code is ${lic ? lic.pc : ""}`;
+  openOutside(`https://wa.me/${String(pay.whatsapp || "").replace(/\D/g, "")}?text=${encodeURIComponent(text)}`);
+};
+$id("unlockForm").onsubmit = e => {
+  e.preventDefault(); buzz();
+  const code = $id("unlockCode").value.trim();
+  if (!code) { unlockMsg("Paste the unlock code first."); return; }
+  unlockMsg("Checking…"); send({ t: "unlock", code });
+};
 connect();
 
 // Safari on iOS 26 sometimes can't make the first connection after a page opens (WebKit bug 302823)

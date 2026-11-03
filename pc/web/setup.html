@@ -20,6 +20,7 @@
     --solid: #fff;
     --solid-ink: #1d1410;
   }
+  [hidden] { display: none !important; }
   * { box-sizing: border-box; margin: 0; }
   html { background: #2a1c16; }
   body { min-height: 100vh; color: var(--ink); font: 400 16px/1.35 "Outfit", "Segoe UI", system-ui, sans-serif;
@@ -120,6 +121,41 @@
   .linkbtn:hover { text-decoration-color: #fff; }
   .ver { color: rgba(255, 255, 255, .34); }
 
+
+  /* ---- free trial / unlock ---- */
+  .chip { display: inline-flex; align-items: center; gap: 6px; margin-left: 10px; height: 28px; padding: 0 12px; border-radius: 999px;
+          font-size: 13px; vertical-align: 2px; color: var(--ink); background: rgba(255, 255, 255, .22);
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, .4); text-shadow: none; }
+  button.chip:hover { background: rgba(255, 255, 255, .32); }
+  .unlock { border-radius: 34px; padding: 22px 22px 18px; display: grid; gap: 16px;
+            background: linear-gradient(120deg, rgba(236, 104, 34, .5), rgba(232, 160, 24, .22) 55%, rgba(255, 255, 255, .1));
+            border: 1px solid rgba(255, 210, 160, .28); -webkit-backdrop-filter: blur(24px); backdrop-filter: blur(24px);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, .2), 0 18px 40px rgba(0, 0, 0, .2); }
+  .ub-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; padding: 0 6px; }
+  .ub-title { font-size: 26px; font-weight: 300; line-height: 1.15; }
+  .ub-sub { margin-top: 4px; font-size: 15px; color: var(--ink-2); }
+  .ub-sub b, .ub-step b { color: var(--ink); font-weight: 500; }
+  .ub-code { text-align: right; flex: none; }
+  .ub-code span { display: block; font-size: 13px; color: var(--ink-2); }
+  .ub-code b { font-size: 26px; font-weight: 400; letter-spacing: .06em; }
+  .ub-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .ub-step { display: flex; flex-direction: column; gap: 10px; padding: 16px; border-radius: 24px; background: var(--pill); font-size: 14.5px; color: var(--ink-2); }
+  .ub-step > span { display: flex; gap: 10px; align-items: baseline; }
+  .ub-step i { font-style: normal; flex: none; width: 22px; height: 22px; border-radius: 50%; display: inline-grid; place-items: center;
+               font-size: 12.5px; color: var(--ink); background: rgba(255, 255, 255, .16); transform: translateY(-1px); }
+  .ub-pay { display: grid; gap: 2px; padding: 8px 12px; border-radius: 16px; background: rgba(255, 255, 255, .07); }
+  .ub-pay .m { font-size: 12.5px; color: var(--ink-3); }
+  .ub-pay .n { font-size: 17px; color: var(--ink); letter-spacing: .02em; user-select: all; }
+  .ub-pay .t { font-size: 13px; }
+  .ub-step .solid { height: 44px; display: inline-grid; place-items: center; text-decoration: none; margin-top: auto; }
+  #ubForm { display: flex; gap: 6px; margin-top: auto; }
+  #ubCode { flex: 1; min-width: 0; height: 44px; padding: 0 16px; border: 0; border-radius: 999px; outline: none; background: rgba(0, 0, 0, .22);
+            color: var(--ink); font: inherit; font-size: 14px; }
+  #ubCode::placeholder { color: var(--ink-3); }
+  #ubForm .solid { height: 44px; padding: 0 18px; }
+  #ubMsg { min-height: 16px; font-size: 13px; color: #ffd9b8; }
+  @media (max-width: 760px) { .ub-grid { grid-template-columns: 1fr; } .ub-head { flex-direction: column; } .ub-code { text-align: left; } }
+
   @media (max-width: 760px) {
     #pad { grid-template-columns: 1fr; padding: 26px 24px; }
     .qr { width: min(268px, 100%); justify-self: center; order: 2; }
@@ -133,11 +169,27 @@
 <main>
   <div id="notices"></div>
 
+  <section class="unlock" id="unlockBox" hidden>
+    <div class="ub-head">
+      <div><div class="ub-title" id="ubTitle">Your free trial has ended</div>
+        <div class="ub-sub">Unlock Blanket Remote on this PC for <b class="price">Rs 100</b>, one time. It stays unlocked for good.</div></div>
+      <div class="ub-code"><span>PC code</span><b id="ubPc">…</b></div>
+    </div>
+    <div class="ub-grid">
+      <div class="ub-step"><span><i>1</i><span>Send <b class="price">Rs 100</b> to</span></span><div id="ubPay"></div></div>
+      <div class="ub-step"><span><i>2</i><span>Send the payment screenshot and your PC code on WhatsApp</span></span>
+        <a class="solid" id="ubWa" target="_blank" rel="noopener">Open WhatsApp</a></div>
+      <div class="ub-step"><span><i>3</i><span>Paste the unlock code you get back</span></span>
+        <form id="ubForm" autocomplete="off"><input id="ubCode" placeholder="Unlock code" spellcheck="false"><button class="solid">Unlock</button></form>
+        <div id="ubMsg"></div></div>
+    </div>
+  </section>
+
   <section id="pad">
     <div id="core"></div>
     <div class="side">
       <div>
-        <div class="label">Blanket Remote</div>
+        <div class="label">Blanket Remote<button class="chip" id="trial" hidden></button></div>
         <ol>
           <li><span>Put your phone on the <b>same Wi-Fi</b> as this PC</span></li>
           <li><span>Point the phone's <b>camera</b> at this code and tap the link</span></li>
@@ -225,6 +277,7 @@ async function refresh() {
     $("others").innerHTML = "";
     (d.others || []).forEach(u => { const p = document.createElement("div"); p.textContent = u; $("others").appendChild(p); });
   }
+  showLicense(d.license);
   if (document.activeElement !== $("auto")) $("auto").checked = d.autostart;
   const n = d.phones;
   $("status").textContent = n ? (n === 1 ? "Phone connected to" : n + " phones connected to") : "Waiting for your phone";
@@ -253,6 +306,54 @@ pad.addEventListener("pointermove", e => { const r = pad.getBoundingClientRect()
 pad.addEventListener("pointerleave", () => aim(rest.x, rest.y));
 addEventListener("resize", layoutCore);
 layoutCore();
+
+
+// ---- free trial / unlock ----
+let lic = null, lastPay = "", boxOpen = false;
+function showLicense(l) {
+  if (!l) return;
+  lic = l;
+  const pay = l.pay || {}, price = pay.price || "Rs 100";
+  const chip = $("trial");
+  if (l.state === "unlocked") chip.hidden = true;
+  else {
+    chip.hidden = false;
+    chip.textContent = l.state === "expired" ? "Trial ended" :
+      "Free trial · " + (l.hours_left > 24 ? Math.ceil(l.hours_left / 24) + " days left" : l.hours_left + " hours left");
+  }
+  $("unlockBox").hidden = !(l.state === "expired" || (l.state === "trial" && boxOpen));
+  $("ubTitle").textContent = l.state === "expired" ? "Your free trial has ended" : "Unlock Blanket Remote";
+  document.querySelectorAll("#unlockBox .price").forEach(b => b.textContent = price);
+  $("ubPc").textContent = l.pc;
+  const key = JSON.stringify(pay);
+  if (key !== lastPay) {
+    lastPay = key;
+    const box = $("ubPay"); box.innerHTML = "";
+    (pay.methods || []).forEach(p => {
+      const d = document.createElement("div"); d.className = "ub-pay";
+      [["m", p.name], ["n", p.number], ["t", p.title]].forEach(([c, t]) => {
+        if (!t) return; const e = document.createElement("div"); e.className = c; e.textContent = t; d.appendChild(e);
+      });
+      box.appendChild(d);
+    });
+    if (!(pay.methods || []).length) box.innerHTML = '<div class="ub-pay"><div class="t">Payment details are on their way.</div></div>';
+    const text = `Assalam o Alaikum! I've paid ${price} for Blanket Remote. My PC code is ${l.pc}`;
+    $("ubWa").href = `https://wa.me/${String(pay.whatsapp || "").replace(/\D/g, "")}?text=${encodeURIComponent(text)}`;
+    $("ubWa").hidden = !pay.whatsapp;
+  }
+}
+$("trial").onclick = () => { boxOpen = !boxOpen; showLicense(lic); };
+$("ubForm").onsubmit = async e => {
+  e.preventDefault();
+  const code = $("ubCode").value.trim();
+  if (!code) { $("ubMsg").textContent = "Paste the unlock code first."; return; }
+  $("ubMsg").textContent = "Checking…";
+  try {
+    const r = await (await post("/api/unlock", { code })).json();
+    $("ubMsg").textContent = r.ok ? "Unlocked ✓ Thank you!" : "That code doesn't match this PC (" + lic.pc + ").";
+    if (r.ok) { $("ubCode").value = ""; boxOpen = false; setTimeout(refresh, 1500); }
+  } catch (err) { $("ubMsg").textContent = "Couldn't reach Blanket Remote."; }
+};
 
 $("copy").onclick = async () => {
   try { await navigator.clipboard.writeText(lastUrl); } catch (e) {

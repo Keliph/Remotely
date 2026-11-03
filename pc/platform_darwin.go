@@ -343,6 +343,28 @@ func autostartEnabled() bool {
 
 func isStoreVersion() bool { return false }
 
+// machineID: the Mac's hardware UUID (stays the same when the app is reinstalled).
+func machineID() string {
+	out, err := exec.Command("ioreg", "-rd1", "-c", "IOPlatformExpertDevice").Output()
+	if err != nil {
+		return ""
+	}
+	for _, line := range strings.Split(string(out), "\n") {
+		if !strings.Contains(line, "IOPlatformUUID") {
+			continue
+		}
+		if i := strings.LastIndex(line, "\""); i > 0 {
+			if j := strings.LastIndex(line[:i], "\""); j >= 0 {
+				return line[j+1 : i]
+			}
+		}
+	}
+	return ""
+}
+
+// licenseMarkerPath: second copy of the trial info, outside the app's own folder.
+func licenseMarkerPath() string { return "/Users/Shared/.blanketremote-license.json" }
+
 func platformInit() {
 	if C.br_trusted(1) == 0 { // shows macOS's "allow accessibility" request the first time
 		log.Printf("accessibility permission not granted yet")

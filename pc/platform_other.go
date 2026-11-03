@@ -8,6 +8,8 @@ package main
 import (
 	"log"
 	"os"
+	"path/filepath"
+	"strings"
 )
 
 func moveMouse(dx, dy int)   { log.Printf("INPUT move %d %d", dx, dy) }
@@ -35,6 +37,21 @@ func displayName() string {
 
 // BR_TEST_STORE=1 shows the page as the Microsoft Store version would.
 func isStoreVersion() bool { return os.Getenv("BR_TEST_STORE") == "1" }
+
+func machineID() string {
+	if v := os.Getenv("BR_TEST_MACHINE"); v != "" {
+		return v
+	}
+	b, _ := os.ReadFile("/etc/machine-id")
+	return strings.TrimSpace(string(b))
+}
+
+func licenseMarkerPath() string {
+	if v := os.Getenv("BR_TEST_MARKER"); v != "" {
+		return v
+	}
+	return filepath.Join(os.TempDir(), "blanketremote-license.json")
+}
 
 func platformInit()                        {}
 func platformNotices() []map[string]string { return nil }

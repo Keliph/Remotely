@@ -51,6 +51,8 @@ type config struct {
 	AutostartSet bool `json:"autostart_set,omitempty"`
 	// FirewallFixed: the one-time Windows Firewall fix has been applied.
 	FirewallFixed bool `json:"firewall_fixed,omitempty"`
+	// License: free trial start and unlock code (also kept outside the app's folder, see license.go).
+	License *licenseFile `json:"license,omitempty"`
 }
 
 var (
@@ -83,6 +85,7 @@ func main() {
 
 	firstRun := loadConfig()
 	hostname = displayName()
+	loadLicense()
 
 	// Already running? Just show its page and quit (double-clicking the exe = "open settings").
 	// Already running? Same version: just show its page (double-clicking the exe = "open settings").
@@ -149,6 +152,7 @@ func main() {
 	mux.HandleFunc("/setup", servePage("web/setup.html", true))
 	mux.HandleFunc("/api/setup", localOnly(setupInfoHandler))
 	mux.HandleFunc("/api/autostart", localOnly(autostartHandler))
+	mux.HandleFunc("/api/unlock", localOnly(unlockHandler))
 	mux.HandleFunc("/api/newkey", localOnly(newKeyHandler))
 	mux.HandleFunc("/api/quit", localOnly(quitHandler))
 	mux.HandleFunc("/api/fix", localOnly(fixHandler))
@@ -408,7 +412,15 @@ func setupInfoHandler(w http.ResponseWriter, r *http.Request) {
 		"os":        runtime.GOOS,
 		"notices":   platformNotices(),
 		"store":     isStoreVersion(),
+		"license":   licenseInfo(),
 	})
+}
+
+// unlockHandler: the unlock code typed or pasted on the PC page.
+func unlockHandler(w http.ResponseWriter, r *http.Request) {
+	var body struct{ Code string }
+	_ = json.NewDecoder(io.LimitReader(r.Body, 4096)).Decode(&body)
+	writeJSON(w, map[string]any{"ok": tryUnlock(body.Code), "license": licenseInfo()})
 }
 
 func autostartHandler(w http.ResponseWriter, r *http.Request) {
@@ -511,6 +523,7 @@ type command struct {
 	K    string   `json:"k"`
 	Keys []string `json:"keys"`
 	App  string   `json:"app"`
+	Code string   `json:"code"`
 }
 
 // Sites the Apps tab can open. Only these: the phone can't make the PC open anything else.
@@ -547,7 +560,7 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("phone disconnected %s", r.RemoteAddr)
 	}()
 
-	_ = c.WriteJSON(map[string]any{"t": "hello", "name": hostname, "v": version, "build": build})
+	writeWS(c, map[string]any{"t": "hello", "name": hostname, "v": version, "build": build, "lic": licenseInfo()})
 
 	for {
 		_, msg, err := c.ReadMessage()
@@ -558,7 +571,41 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 		if json.Unmarshal(msg, &cmd) != nil {
 			continue
 		}
+		if cmd.T == "unlock" {
+			if !tryUnlock(cmd.Code) {
+				writeWS(c, map[string]any{"t": "unlock-bad"})
+			}
+			continue
+		}
+		if trialOver() {
+			// free trial is over: the phone shows how to unlock instead of controlling the PC
+			writeWS(c, map[string]any{"t": "license", "lic": licenseInfo()})
+			continue
+		}
 		handle(cmd)
+	}
+}
+
+// wsWriteMu: one writer at a time per connection (the websocket library needs that).
+var wsWriteMu sync.Mutex
+
+func writeWS(c *websocket.Conn, v any) {
+	wsWriteMu.Lock()
+	defer wsWriteMu.Unlock()
+	_ = c.SetWriteDeadline(time.Now().Add(5 * time.Second))
+	_ = c.WriteJSON(v)
+}
+
+// broadcast sends v to every connected phone.
+func broadcast(v any) {
+	connsMu.Lock()
+	list := make([]*websocket.Conn, 0, len(conns))
+	for c := range conns {
+		list = append(list, c)
+	}
+	connsMu.Unlock()
+	for _, c := range list {
+		writeWS(c, v)
 	}
 }
 

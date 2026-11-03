@@ -44,3 +44,10 @@ Settings + log live in `%APPDATA%\BlanketRemote\` (`config.json`, `log.txt`).
 `msix/build.ps1`, test-installs the package on Windows, and puts `BlanketRemote-Store.msix` on the `store`
 pre-release for uploading in Partner Center. The app notices when it runs from the Store package and lets
 Windows handle startup and the firewall.
+
+## Free trial and unlock codes
+
+Every PC gets a 3-day free trial (`license.go`). After that the phone shows how to pay and asks for an unlock
+code; the PC page shows the same. Price and payment details (JazzCash, Easypaisa, bank, WhatsApp number) are in
+`web/pay.json`. Unlock codes are Ed25519 signatures of the PC code: the app only contains the public key. The
+private key lives only in the seller's code-generator page, which is deliberately **not** in this repo.

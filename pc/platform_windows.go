@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -45,6 +46,35 @@ var storeVersion = func() bool {
 }()
 
 func isStoreVersion() bool { return storeVersion }
+
+// machineID: Windows' own id for this installation (stays the same when the app is reinstalled).
+func machineID() string {
+	var h syscall.Handle
+	p, _ := syscall.UTF16PtrFromString(`SOFTWARE\Microsoft\Cryptography`)
+	const keyRead, wow64Key64 = 0x20019, 0x0100
+	if syscall.RegOpenKeyEx(syscall.HKEY_LOCAL_MACHINE, p, 0, keyRead|wow64Key64, &h) != nil {
+		return ""
+	}
+	defer syscall.RegCloseKey(h)
+	name, _ := syscall.UTF16PtrFromString("MachineGuid")
+	var typ uint32
+	buf := make([]uint16, 128)
+	n := uint32(len(buf) * 2)
+	if syscall.RegQueryValueEx(h, name, nil, &typ, (*byte)(unsafe.Pointer(&buf[0])), &n) != nil {
+		return ""
+	}
+	return syscall.UTF16ToString(buf)
+}
+
+// licenseMarkerPath: second copy of the trial info in ProgramData, which survives reinstalling (also of
+// the Store version, whose own folders are removed on uninstall).
+func licenseMarkerPath() string {
+	d := os.Getenv("ProgramData")
+	if d == "" {
+		d = `C:\ProgramData`
+	}
+	return filepath.Join(d, appName, "license.json")
+}
 
 const (
 	inputMouse    = 0

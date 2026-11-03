@@ -45,6 +45,15 @@ class _RemoteScreenState extends State<RemoteScreen> {
         onWebResourceError: (WebResourceError error) {
           if (error.isForMainFrame ?? true) _recover();
         },
+        // Only the PC's own page loads in here; any other link opens outside the app.
+        onNavigationRequest: (NavigationRequest request) {
+          final uri = Uri.tryParse(request.url);
+          if (uri == null || uri.host == _pc.ip || uri.scheme == 'about' || uri.scheme == 'data') {
+            return NavigationDecision.navigate;
+          }
+          Native.openUrl(request.url);
+          return NavigationDecision.prevent;
+        },
       ));
     _load();
   }
@@ -143,6 +152,12 @@ class _RemoteScreenState extends State<RemoteScreen> {
     if (data['confirm'] == 'shutdown') {
       final text = data['text'];
       _confirmShutdown(text is String ? text : 'Shut down this PC?');
+      return;
+    }
+    // e.g. the "Send on WhatsApp" button on the unlock screen: open in WhatsApp / the browser
+    final open = data['open'];
+    if (open is String && (open.startsWith('https://') || open.startsWith('http://'))) {
+      Native.openUrl(open);
     }
   }
 

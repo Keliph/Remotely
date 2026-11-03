@@ -14,6 +14,13 @@ class Native {
     return 'Phone';
   }
 
+  /// Opens a link in the app that handles it (WhatsApp for wa.me links, otherwise the browser).
+  static Future<void> openUrl(String url) async {
+    try {
+      await _channel.invokeMethod<void>('openUrl', {'url': url});
+    } catch (_) {}
+  }
+
   /// kind: press | tap | rightTap | drag | notch
   static Future<void> haptic(String kind) async {
     try {
