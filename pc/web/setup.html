@@ -41,7 +41,10 @@
             border: 1px solid rgba(255, 210, 160, .28);
             -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); }
   .notice button { flex: none; height: 40px; padding: 0 20px; border-radius: 999px; background: var(--solid); color: var(--solid-ink); font-size: 14px; font-weight: 500; }
-  .notice button:hover { background: #f2ece6; }
+  .notice button:hover, .notice .btn:hover { background: #f2ece6; }
+  .notice .btn { flex: none; height: 40px; padding: 0 20px; border-radius: 999px; background: var(--solid); color: var(--solid-ink);
+                 font-size: 14px; font-weight: 500; display: inline-grid; place-items: center; text-decoration: none; white-space: nowrap; }
+  .notice b { font-weight: 500; }
 
   /* ---- the glowing card ---- */
   #pad { position: relative; min-height: 400px; border-radius: 42px; overflow: hidden; isolation: isolate;
@@ -171,6 +174,10 @@
 <body>
 <main>
   <div id="notices"></div>
+  <div class="notice" id="updBox" hidden>
+    <span><b>A new version of Blanket Remote is ready.</b> Download it and open the file: it replaces this version, and your phones and unlock stay as they are.</span>
+    <a class="btn" id="updLink" target="_blank" rel="noopener">Download update</a>
+  </div>
 
   <section class="unlock" id="unlockBox" hidden>
     <div class="ub-head">
@@ -282,6 +289,7 @@ async function refresh() {
     $("others").innerHTML = "";
     (d.others || []).forEach(u => { const p = document.createElement("div"); p.textContent = u; $("others").appendChild(p); });
   }
+  $("updBox").hidden = !d.update; if (d.update) $("updLink").href = d.update.link;
   payQr = d.pay_qr || "";
   showLicense(d.license);
   if (document.activeElement !== $("auto")) $("auto").checked = d.autostart;

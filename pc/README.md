@@ -51,3 +51,11 @@ Every PC gets a 3-day free trial (`license.go`). After that the phone shows how 
 code; the PC page shows the same. Price and payment details (JazzCash, Easypaisa, bank, WhatsApp number) are in
 `web/pay.json`. Unlock codes are Ed25519 signatures of the PC code: the app only contains the public key. The
 private key lives only in the seller's code-generator page, which is deliberately **not** in this repo.
+
+## Update notice
+
+Each release publishes `version.json` (the time of the last change to `pc/` and to `app/`). The PC app
+(`update.go`) and the Android app (`update_check.dart`) compare it with the version stamped into them at build
+time and offer the new download: on the PC page, as an "Update ready" button on the phone remote, and as a bar
+in the Android app. Downloads open in the browser; the app never replaces its own exe. The Store version is
+updated by the Store.

@@ -79,6 +79,12 @@
            -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
            box-shadow: inset 0 1px 0 rgba(255, 255, 255, .4); }
   #power:active { background: rgba(255, 255, 255, .38); }
+  /* "Update ready": a newer PC app is out; tapping opens the download on the PC */
+  #upd { position: absolute; z-index: 4; right: 72px; top: 24px; height: 30px; padding: 0 13px 0 10px; border-radius: 999px;
+         display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink); background: rgba(255, 255, 255, .22);
+         -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .4); }
+  #upd:active { background: rgba(255, 255, 255, .38); }
+  #upd svg { width: 15px; height: 15px; stroke-width: 2.2; }
   #power svg { width: 21px; height: 21px; }
   /* right edge: the scroll bubble. Drag it toward the arrows to scroll; it springs back to the middle. */
   #seam { position: absolute; z-index: 3; right: 0; top: 76px; bottom: 22px; width: 46px; pointer-events: none;
@@ -260,6 +266,7 @@
   <div id="hint"><span>Slide to move the pointer</span><span>Tap to click</span><span>Two-finger tap to right-click</span><span>Drag the bubble on the right to scroll</span></div>
   <div id="seam"><svg><use href="#i-up"/></svg><div id="knob"><svg><use href="#i-updown"/></svg></div><svg><use href="#i-down"/></svg></div>
   <div id="big"><span class="sub">Connecting to</span><span class="name">your PC…</span></div>
+  <button id="upd" hidden><svg><use href="#i-down"/></svg><span>Update ready</span></button>
   <button id="power" aria-label="Shut down PC"><svg><use href="#i-power"/></svg></button>
 </div>
 
@@ -402,6 +409,7 @@ function connect() {
     try {
       const m = JSON.parse(e.data);
       if (m.t === "license") { applyLicense(m.lic); return; }
+      if (m.t === "update") { applyUpdate(m.upd); return; }
       if (m.t === "unlock-bad") { unlockMsg("That code doesn't match this PC. Check it was made for code " + (lic && lic.pc) + "."); return; }
       if (m.t !== "hello") return;
       // The PC was updated while this screen stayed open (the app keeps it loaded in the background):
@@ -410,6 +418,7 @@ function connect() {
       else if ((m.build || "") !== pageBuild) { location.reload(); return; }
       pcName = m.name; setBig("Connected to", pcName);
       applyLicense(m.lic);
+      applyUpdate(m.upd);
     } catch (_) {}
   };
   ws.onclose = () => {
@@ -425,6 +434,19 @@ function connect() {
   };
 }
 function send(obj) { if (ws && ws.readyState === 1) ws.send(JSON.stringify(obj)); }
+
+// ---- update ready on the PC ----
+function applyUpdate(u) {
+  const b = document.getElementById("upd");
+  b.hidden = !u;
+  if (!u) return;
+  const where = u.os === "darwin" ? "Mac" : "PC";
+  b.querySelector("span").textContent = u.opened ? `Finish on your ${where}` : "Update ready";
+}
+document.getElementById("upd").addEventListener("click", e => {
+  e.stopPropagation(); buzz();
+  send({ t: "update" });
+});
 
 // ---- free trial / unlock ----
 let lic = null, wasLocked = false, trialTip = null;

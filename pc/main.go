@@ -134,6 +134,7 @@ func main() {
 	}
 
 	platformInit()
+	go updateChecker()
 	go discoveryResponder()
 
 	mux := http.NewServeMux()
@@ -414,6 +415,7 @@ func setupInfoHandler(w http.ResponseWriter, r *http.Request) {
 		"store":     isStoreVersion(),
 		"license":   licenseInfo(),
 		"pay_qr":    payQR(),
+		"update":    updateInfo(),
 	})
 }
 
@@ -561,7 +563,7 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("phone disconnected %s", r.RemoteAddr)
 	}()
 
-	writeWS(c, map[string]any{"t": "hello", "name": hostname, "v": version, "build": build, "lic": licenseInfo()})
+	writeWS(c, map[string]any{"t": "hello", "name": hostname, "v": version, "build": build, "lic": licenseInfo(), "upd": updateInfo()})
 
 	for {
 		_, msg, err := c.ReadMessage()
@@ -570,6 +572,10 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		var cmd command
 		if json.Unmarshal(msg, &cmd) != nil {
+			continue
+		}
+		if cmd.T == "update" { // phone's "Update" button: open the download on this PC
+			openUpdate()
 			continue
 		}
 		if cmd.T == "unlock" {

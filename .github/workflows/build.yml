@@ -19,6 +19,8 @@ jobs:
         working-directory: app
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # full history: the app's version is the date of its last change
 
       - uses: actions/setup-java@v4
         with:
@@ -79,7 +81,11 @@ jobs:
           fi
 
       - name: Build APK
-        run: flutter build apk --release 2>&1 | tee -a "$RUNNER_TEMP/build.log"
+        run: |
+          # version = time of the last commit that changed the app (so the "update available" bar only
+          # shows when the app itself changed); also the Android versionCode
+          APP_V=$(git log -1 --format=%ct -- .)
+          flutter build apk --release --build-number="$APP_V" --dart-define=APP_VERSION="$APP_V" 2>&1 | tee -a "$RUNNER_TEMP/build.log"
 
       # Never publish an APK signed with the wrong key (it wouldn't install over the app on people's phones).
       - name: Check the APK's signing key
@@ -116,6 +122,8 @@ jobs:
         working-directory: pc
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # full history: the PC app's version is the date of its last change
 
       - uses: actions/setup-go@v5
         with:
@@ -124,7 +132,9 @@ jobs:
       - run: go test ./... 2>&1 | tee -a "$RUNNER_TEMP/build.log"
 
       - name: Build exe
-        run: GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-H windowsgui -s -w -X main.build=${GITHUB_SHA::7}" -o BlanketRemote.exe . 2>&1 | tee -a "$RUNNER_TEMP/build.log"
+        run: |
+          PC_V=$(git log -1 --format=%ct -- .)
+          GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-H windowsgui -s -w -X main.build=${GITHUB_SHA::7} -X main.pcVersion=$PC_V" -o BlanketRemote.exe . 2>&1 | tee -a "$RUNNER_TEMP/build.log"
 
       - uses: actions/upload-artifact@v4
         with:
@@ -185,6 +195,8 @@ jobs:
         working-directory: pc
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # full history: the PC app's version is the date of its last change
 
       - uses: actions/setup-go@v5
         with:
@@ -193,8 +205,8 @@ jobs:
       - name: Build for Apple Silicon and Intel Macs
         run: |
           mkdir -p build
-          CGO_ENABLED=1 GOOS=darwin GOARCH=arm64 go build -trimpath -ldflags "-s -w -X main.build=${GITHUB_SHA::7}" -o build/arm64 . 2>&1 | tee -a "$RUNNER_TEMP/build.log"
-          CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 CC="clang -arch x86_64" go build -trimpath -ldflags "-s -w -X main.build=${GITHUB_SHA::7}" -o build/amd64 . 2>&1 | tee -a "$RUNNER_TEMP/build.log"
+          CGO_ENABLED=1 GOOS=darwin GOARCH=arm64 go build -trimpath -ldflags "-s -w -X main.build=${GITHUB_SHA::7} -X main.pcVersion=$(git log -1 --format=%ct -- .)" -o build/arm64 . 2>&1 | tee -a "$RUNNER_TEMP/build.log"
+          CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 CC="clang -arch x86_64" go build -trimpath -ldflags "-s -w -X main.build=${GITHUB_SHA::7} -X main.pcVersion=$(git log -1 --format=%ct -- .)" -o build/amd64 . 2>&1 | tee -a "$RUNNER_TEMP/build.log"
           lipo -create -output build/BlanketRemote build/arm64 build/amd64
           lipo -info build/BlanketRemote | tee -a "$RUNNER_TEMP/build.log"
 
@@ -232,6 +244,10 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - uses: actions/download-artifact@v4
         with:
           path: out
@@ -243,8 +259,13 @@ jobs:
           mv out/BlanketRemote-android/app-release.apk BlanketRemote.apk
           mv out/BlanketRemote-windows/BlanketRemote.exe BlanketRemote.exe
           mv out/BlanketRemote-mac/BlanketRemote-Mac.zip BlanketRemote-Mac.zip
+          # version.json: the apps compare this with their own version to offer an update
+          base="https://github.com/$GITHUB_REPOSITORY/releases/download/latest"
+          printf '{"pc": %s, "app": %s, "build": "%s", "exe": "%s/BlanketRemote.exe", "mac": "%s/BlanketRemote-Mac.zip", "apk": "%s/BlanketRemote.apk"}\n' \
+            "$(git log -1 --format=%ct -- pc)" "$(git log -1 --format=%ct -- app)" "${GITHUB_SHA::7}" "$base" "$base" "$base" > version.json
+          cat version.json
           gh release delete latest --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag || true
-          gh release create latest BlanketRemote.apk BlanketRemote.exe BlanketRemote-Mac.zip \
+          gh release create latest BlanketRemote.apk BlanketRemote.exe BlanketRemote-Mac.zip version.json \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
             --title "Blanket Remote - latest build" \

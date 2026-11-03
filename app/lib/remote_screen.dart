@@ -9,6 +9,7 @@ import 'package:webview_flutter/webview_flutter.dart';
 import 'native.dart';
 import 'pc_link.dart';
 import 'ui.dart';
+import 'update_check.dart';
 
 /// Shows the remote page served by the PC itself, so the PC app and the phone app always speak the
 /// same version. The page talks back through the "BRApp" channel (vibration, shutdown dialog, and
@@ -56,6 +57,19 @@ class _RemoteScreenState extends State<RemoteScreen> {
         },
       ));
     _load();
+    _offerUpdate();
+  }
+
+  /// A newer version of this app is out: a bar with an Update button (opens the APK download).
+  Future<void> _offerUpdate() async {
+    await Future<void>.delayed(const Duration(seconds: 4));
+    final apk = await newerApk();
+    if (apk == null || !mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: const Text('A new version of the Blanket Remote app is ready'),
+      duration: const Duration(seconds: 12),
+      action: SnackBarAction(label: 'Update', textColor: const Color(0xFFFFB45A), onPressed: () => Native.openUrl(apk)),
+    ));
   }
 
   @override
