@@ -19,7 +19,7 @@ h1 { font-size: 78px; font-weight: 300; line-height: 1; letter-spacing: -.02em; 
         border-radius: 999px; font-size: 27px; background: rgba(255,255,255,.16); box-shadow: inset 0 1px 0 rgba(255,255,255,.3); }
 .wifi svg { width: 32px; height: 32px; }
 .steps { margin-top: 30px; display: flex; flex-direction: column; gap: 16px; }
-.step { display: grid; grid-template-columns: 74px 1fr auto; gap: 24px; align-items: center; padding: 22px 22px 22px 24px; min-height: 236px;
+.step { display: grid; grid-template-columns: 74px 1fr auto; gap: 24px; align-items: center; padding: 22px 22px 22px 24px; min-height: 226px;
         border-radius: 38px; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.15);
         box-shadow: inset 0 1px 0 rgba(255,255,255,.2), 0 16px 34px rgba(0,0,0,.18); }
 .num { width: 74px; height: 74px; border-radius: 50%; display: grid; place-items: center; font-size: 38px; font-weight: 500; color: #2a1408;
@@ -113,12 +113,10 @@ const steps = {
     ["Open it on your PC", 'Click <b>Open</b>. A page with a QR code opens. Leave Blanket Remote running.', '<div class="vis dark">' + pcPad + '</div>'],
     ["Scan the code with your phone", 'Point your <b>Camera</b> (or Google Lens) at the QR code and tap the link. The remote opens in <b>Chrome</b>.',
      '<div class="vis dark"><div class="cam"><div class="frame"></div><img class="qr" src="shots/fakeqr.svg"><div class="chip">Open link</div></div></div>'],
-    ["Tap Get to install the app", 'At the top, tap <b>Get</b> and install it. If Android asks, allow installing from Chrome.',
-     '<div class="vis dark"><div class="appbar"><div><b>Get the Android app</b><small>It finds your PC again by itself</small></div><span>Get</span></div></div>'],
-    ["Open the app and tap your PC", 'Your PC\'s name shows up. <b>Tap it.</b>',
-     '<div class="vis dark"><div class="rows"><div class="row on"><i>' + laptopSvg + '</i><div><b>ASUS-VIVOBOOK</b><small>Tap to connect</small></div><span>›</span></div><div class="row"><i>' + laptopSvg + '</i><div><b>OFFICE-PC</b><small>Not on this Wi-Fi</small></div><span>›</span></div></div></div>'],
-    ["Click Yes on your PC", 'Your PC asks once if this phone can control it. Click <b>Yes</b> and you\'re in!',
-     '<div class="vis dark"><div class="dialog"><div class="h">Blanket Remote</div><div class="q">Allow "Galaxy A54" to control this PC?</div><div class="btns"><span class="y">Yes</span><span>No</span></div></div></div>'],
+    ["Add it to your Home screen", 'In Chrome tap <b>⋮</b> (top right), then <b>Add to Home screen</b>. Next time it\'s one tap.',
+     '<div class="vis dark"><div class="share"><div>Bookmarks <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M6 3h12v18l-6-4-6 4z"/></svg></div><div class="hl">Add to Home screen <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M12 8v8M8 12h8"/></svg></div></div></div>'],
+    ["Control your PC", 'Touchpad, typing, media keys and your apps, right from your phone.',
+     '<div class="vis"><img class="shot" src="shots/remote-mid.png"></div>'],
   ],
   iphone: [
     ["Get Blanket Remote on your PC", 'On your PC, open <b>Microsoft Store</b>, search <b>Blanket Remote</b> and click <b>Get</b>.', '<div class="vis dark">' + store + '</div>'],
@@ -131,12 +129,11 @@ const steps = {
      '<div class="vis"><img class="shot" src="shots/remote-mid.png"></div>'],
   ],
 };
-if (v !== "iphone") document.body.classList.add("six");
 const title = v === "iphone" ? "iPhone setup" : "Android setup";
-const lead = v === "iphone" ? "Control your PC from your iPhone in 2 minutes. No app to install on the phone." : "Control your PC from your Android phone in 2 minutes.";
+const lead = "Control your PC from your phone. Nothing to install on it.";
 const restartTip = v === "iphone"
-  ? '<b>Next time:</b> just tap Blanket Remote on your Home Screen. It starts with Windows. If the phone can\'t find the PC, open Blanket Remote on the PC.'
-  : '<b>Next time:</b> just open the app on your phone. It starts with Windows. If the phone can\'t find the PC, open Blanket Remote on the PC.';
+  ? '<b>Next time:</b> tap Blanket Remote on your Home Screen. Can\'t connect? Open Blanket Remote on the PC and scan the code again.'
+  : '<b>Next time:</b> tap Blanket Remote on your Home screen. Can\'t connect? Open Blanket Remote on the PC and scan the code again.';
 document.getElementById("root").innerHTML =
   '<header><img src="' + icon + '"><div><div class="brand">Blanket Remote</div><h1>' + title + '</h1></div></header>'
   + '<p class="lead">' + lead + '</p>'
