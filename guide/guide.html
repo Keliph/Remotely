@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+@font-face { font-family: Outfit; font-weight: 300; src: url(../pc/web/fonts/outfit-latin-300.woff2); }
+@font-face { font-family: Outfit; font-weight: 400; src: url(../pc/web/fonts/outfit-latin-400.woff2); }
+@font-face { font-family: Outfit; font-weight: 500; src: url(../pc/web/fonts/outfit-latin-500.woff2); }
+:root { --ink: #fff; --ink-2: rgba(255,255,255,.80); --ink-3: rgba(255,255,255,.55); --pill: rgba(28,24,22,.32); }
+* { margin: 0; box-sizing: border-box; }
+body { width: 1080px; height: 1920px; overflow: hidden; font-family: Outfit; color: var(--ink);
+  background: radial-gradient(80% 30% at 20% 8%, rgba(239,154,82,.55), transparent 70%),
+              radial-gradient(75% 32% at 30% 70%, rgba(227,150,30,.38), transparent 72%),
+              linear-gradient(180deg, #2a1c16 0%, #4a4240 55%, #6f7275 100%); }
+main { padding: 64px 60px 0; display: flex; flex-direction: column; height: 100%; }
+header { display: flex; align-items: center; gap: 28px; }
+header img { width: 132px; height: 132px; filter: drop-shadow(0 14px 30px rgba(0,0,0,.35)); }
+.brand { font-size: 30px; color: var(--ink-2); letter-spacing: .02em; }
+h1 { font-size: 78px; font-weight: 300; line-height: 1; letter-spacing: -.02em; margin-top: 6px; }
+.lead { margin-top: 26px; font-size: 32px; font-weight: 300; color: var(--ink-2); }
+.wifi { margin-top: 22px; align-self: flex-start; display: inline-flex; align-items: center; gap: 14px; height: 60px; padding: 0 26px 0 20px;
+        border-radius: 999px; font-size: 27px; background: rgba(255,255,255,.16); box-shadow: inset 0 1px 0 rgba(255,255,255,.3); }
+.wifi svg { width: 32px; height: 32px; }
+.steps { margin-top: 30px; display: flex; flex-direction: column; gap: 16px; }
+.step { display: grid; grid-template-columns: 74px 1fr auto; gap: 24px; align-items: center; padding: 22px 22px 22px 24px; min-height: 236px;
+        border-radius: 38px; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.15);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,.2), 0 16px 34px rgba(0,0,0,.18); }
+.num { width: 74px; height: 74px; border-radius: 50%; display: grid; place-items: center; font-size: 38px; font-weight: 500; color: #2a1408;
+       background: linear-gradient(150deg, #ff9a3c, #ffcf8a); box-shadow: 0 8px 20px rgba(214,90,0,.35), inset 0 1px 0 rgba(255,255,255,.6); align-self: start; margin-top: 8px; }
+.t { font-size: 36px; font-weight: 500; line-height: 1.12; }
+.d { margin-top: 10px; font-size: 26px; line-height: 1.38; color: var(--ink-2); font-weight: 300; }
+.d b { color: var(--ink); font-weight: 500; }
+body.six .step { min-height: 0; padding-top: 16px; padding-bottom: 16px; }
+body.six header img { width: 112px; height: 112px; }
+body.six h1 { font-size: 70px; }
+body.six .lead { margin-top: 18px; }
+body.six .wifi { margin-top: 16px; }
+body.six main { padding-top: 54px; }
+body.six .steps { gap: 12px; margin-top: 22px; }
+body.six .vis { height: 170px; }
+.vis { width: 330px; height: 182px; border-radius: 26px; overflow: hidden; position: relative; display: grid; place-items: center; }
+.shot { width: 100%; height: 100%; object-fit: cover; }
+.vis.dark { background: rgba(0,0,0,.22); }
+/* little mockups */
+.apk { position: relative; }
+.apk img { width: 120px; height: 120px; }
+.apk span { position: absolute; right: -16px; bottom: -6px; padding: 6px 14px; border-radius: 999px; background: #fff; color: #1d1410; font-size: 22px; font-weight: 500; }
+.store { display: grid; gap: 14px; width: 280px; }
+.search { display: flex; align-items: center; gap: 12px; height: 58px; padding: 0 20px; border-radius: 14px; background: rgba(255,255,255,.9); color: #222; font-size: 25px; }
+.search svg { width: 26px; height: 26px; stroke: #555; }
+.get { display: flex; align-items: center; gap: 14px; }
+.get img { width: 58px; height: 58px; }
+.get .n { flex: 1; font-size: 22px; line-height: 1.15; }
+.get .n small { display: block; color: var(--ink-3); font-size: 18px; }
+.get b { padding: 10px 22px; border-radius: 10px; background: #ff8a1f; color: #fff; font-size: 22px; font-weight: 500; }
+.dialog { width: 300px; padding: 18px 20px 16px; border-radius: 16px; background: #f4f1ee; color: #222; box-shadow: 0 12px 28px rgba(0,0,0,.35); }
+.dialog .h { font-size: 18px; color: #666; margin-bottom: 8px; }
+.dialog .q { font-size: 21px; line-height: 1.3; }
+.dialog .btns { display: flex; justify-content: flex-end; gap: 10px; margin-top: 14px; }
+.dialog .btns span { padding: 8px 22px; border-radius: 8px; font-size: 20px; background: #e2ddd8; }
+.dialog .btns span.y { background: #ff8a1f; color: #fff; font-weight: 500; box-shadow: 0 0 0 3px rgba(255,138,31,.35); }
+.cam { width: 210px; height: 182px; position: relative; display: grid; place-items: center; }
+.cam .frame { position: absolute; inset: 16px 40px; border: 5px solid #ffd27a; border-radius: 22px; }
+.appbar { width: 312px; display: flex; align-items: center; gap: 10px; padding: 14px 12px 14px 18px; border-radius: 26px;
+          background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.2); }
+.appbar div { flex: 1; line-height: 1.25; }
+.appbar b { display: block; font-size: 19px; font-weight: 500; white-space: nowrap; }
+.appbar small { display: block; font-size: 14px; white-space: nowrap; color: rgba(255,255,255,.75); }
+.appbar span { flex: none; padding: 11px 20px; border-radius: 999px; background: #fff; color: #1d1410; font-size: 20px; font-weight: 500;
+               box-shadow: 0 0 0 5px rgba(255, 190, 100, .75); }
+.monitor { display: grid; justify-items: center; }
+.monitor .scr { width: 286px; height: 150px; padding: 7px; border-radius: 12px; background: #141414; box-shadow: 0 10px 24px rgba(0,0,0,.35); display: grid; place-items: center; overflow: hidden; }
+.monitor .scr img { width: 100%; height: 100%; object-fit: contain; background: linear-gradient(180deg, #2a1c16, #4a4240); border-radius: 6px; }
+.monitor .stand { width: 70px; height: 14px; border-radius: 0 0 8px 8px; background: #141414; }
+.rows { width: 300px; display: grid; gap: 10px; }
+.row { position: relative; display: flex; align-items: center; gap: 12px; padding: 10px 14px 10px 10px; border-radius: 20px; background: rgba(28,24,22,.45); font-size: 21px; }
+.row i { width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; background: rgba(255,255,255,.14); color: rgba(255,255,255,.55); flex: none; }
+.row i svg { width: 24px; height: 24px; }
+.row.on { box-shadow: 0 0 0 3px rgba(255, 190, 100, .85); background: rgba(28,24,22,.55); }
+.row.on i { background: #fff; color: #1d1410; }
+.row div { flex: 1; line-height: 1.2; }
+.row b { display: block; font-weight: 500; }
+.row:not(.on) b { color: rgba(255,255,255,.55); }
+.row small { display: block; color: rgba(255,255,255,.7); font-size: 17px; }
+.row span { font-size: 30px; color: rgba(255,255,255,.6); }
+.row em { position: absolute; right: 52px; top: 50%; width: 46px; height: 46px; margin-top: -23px; border-radius: 50%;
+          background: rgba(255,210,122,.45); box-shadow: 0 0 0 10px rgba(255,210,122,.18); }
+.cam .qr { width: 104px; height: 104px; border-radius: 8px; padding: 6px; background: #fff; margin-top: -14px; }
+.cam .chip { position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%); white-space: nowrap; padding: 8px 18px; border-radius: 999px;
+             background: #ffd27a; color: #2a1408; font-size: 20px; font-weight: 500; }
+.share { width: 300px; border-radius: 18px; overflow: hidden; background: rgba(255,255,255,.92); color: #222; font-size: 22px; }
+.share div { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; }
+.share div + div { border-top: 1px solid #ddd; }
+.share .hl { background: #ffe4c2; font-weight: 500; }
+.share svg { width: 28px; height: 28px; stroke: #333; }
+.phone { height: 182px; display: flex; gap: 12px; align-items: center; }
+.phone img { height: 182px; border-radius: 18px; border: 4px solid #111; }
+footer { margin-top: auto; padding: 0 6px 56px; display: grid; gap: 14px; }
+.tip { display: flex; gap: 16px; align-items: flex-start; font-size: 25px; line-height: 1.38; color: var(--ink-2); font-weight: 300; }
+.tip b { color: var(--ink); font-weight: 500; }
+.tip i { font-style: normal; flex: none; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; font-size: 20px;
+         background: rgba(255,255,255,.16); margin-top: 1px; }
+</style></head><body><main id="root"></main>
+<script>
+const v = new URLSearchParams(location.search).get("v");
+const icon = "shots/icon.png";
+const wifiSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"><path d="M2 8.5a15 15 0 0 1 20 0"/><path d="M5.5 12a10 10 0 0 1 13 0"/><path d="M9 15.5a5 5 0 0 1 6 0"/><circle cx="12" cy="19" r="1.3" fill="#fff"/></svg>';
+const laptopSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="5" width="16" height="11" rx="1.5"/><path d="M2 19h20"/></svg>';
+const searchSvg = '<svg viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>';
+const store = '<div class="store"><div class="search">' + searchSvg + 'Blanket Remote</div>'
+  + '<div class="get"><img src="' + icon + '"><div class="n">Blanket Remote<small>Blanket Apps</small></div><b>Get</b></div></div>';
+const pcPad = '<div class="monitor"><div class="scr"><img src="shots/pc-pad-blur.png"></div><div class="stand"></div></div>';
+const steps = {
+  android: [
+    ["Get Blanket Remote on your PC", 'On your PC, open <b>Microsoft Store</b>, search <b>Blanket Remote</b> and click <b>Get</b>.', '<div class="vis dark">' + store + '</div>'],
+    ["Open it on your PC", 'Click <b>Open</b>. A page with a QR code opens. Leave Blanket Remote running.', '<div class="vis dark">' + pcPad + '</div>'],
+    ["Scan the code with your phone", 'Point your <b>Camera</b> (or Google Lens) at the QR code and tap the link. The remote opens in <b>Chrome</b>.',
+     '<div class="vis dark"><div class="cam"><div class="frame"></div><img class="qr" src="shots/fakeqr.svg"><div class="chip">Open link</div></div></div>'],
+    ["Tap Get to install the app", 'At the top, tap <b>Get</b> and install it. If Android asks, allow installing from Chrome.',
+     '<div class="vis dark"><div class="appbar"><div><b>Get the Android app</b><small>It finds your PC again by itself</small></div><span>Get</span></div></div>'],
+    ["Open the app and tap your PC", 'Your PC\'s name shows up. <b>Tap it.</b>',
+     '<div class="vis dark"><div class="rows"><div class="row on"><i>' + laptopSvg + '</i><div><b>ASUS-VIVOBOOK</b><small>Tap to connect</small></div><span>›</span></div><div class="row"><i>' + laptopSvg + '</i><div><b>OFFICE-PC</b><small>Not on this Wi-Fi</small></div><span>›</span></div></div></div>'],
+    ["Click Yes on your PC", 'Your PC asks once if this phone can control it. Click <b>Yes</b> and you\'re in!',
+     '<div class="vis dark"><div class="dialog"><div class="h">Blanket Remote</div><div class="q">Allow "Galaxy A54" to control this PC?</div><div class="btns"><span class="y">Yes</span><span>No</span></div></div></div>'],
+  ],
+  iphone: [
+    ["Get Blanket Remote on your PC", 'On your PC, open <b>Microsoft Store</b>, search <b>Blanket Remote</b> and click <b>Get</b>.', '<div class="vis dark">' + store + '</div>'],
+    ["Open it on your PC", 'Click <b>Open</b>. A Blanket Remote page with a QR code opens. Leave it running.', '<div class="vis dark">' + pcPad + '</div>'],
+    ["Scan the code with your Camera", 'Open the iPhone <b>Camera</b>, point it at the QR code and tap the link. The remote opens in <b>Safari</b>.',
+     '<div class="vis dark"><div class="cam"><div class="frame"></div><img class="qr" src="shots/fakeqr.svg"><div class="chip">Open link</div></div></div>'],
+    ["Add it to your Home Screen", 'In Safari tap <b>Share</b>, then <b>Add to Home Screen</b>. Next time it\'s one tap.',
+     '<div class="vis dark"><div class="share"><div>Copy <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg></div><div class="hl">Add to Home Screen <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M12 8v8M8 12h8"/></svg></div></div></div>'],
+    ["Control your PC", 'Touchpad, typing, media keys and your apps, right from your phone.',
+     '<div class="vis"><img class="shot" src="shots/remote-mid.png"></div>'],
+  ],
+};
+if (v !== "iphone") document.body.classList.add("six");
+const title = v === "iphone" ? "iPhone setup" : "Android setup";
+const lead = v === "iphone" ? "Control your PC from your iPhone in 2 minutes. No app to install on the phone." : "Control your PC from your Android phone in 2 minutes.";
+const restartTip = v === "iphone"
+  ? '<b>Next time:</b> just tap Blanket Remote on your Home Screen. It starts with Windows. If the phone can\'t find the PC, open Blanket Remote on the PC.'
+  : '<b>Next time:</b> just open the app on your phone. It starts with Windows. If the phone can\'t find the PC, open Blanket Remote on the PC.';
+document.getElementById("root").innerHTML =
+  '<header><img src="' + icon + '"><div><div class="brand">Blanket Remote</div><h1>' + title + '</h1></div></header>'
+  + '<p class="lead">' + lead + '</p>'
+  + '<div class="wifi">' + wifiSvg + 'Phone and PC on the same Wi-Fi</div>'
+  + '<section class="steps">' + steps[v === "iphone" ? "iphone" : "android"].map((s, i) =>
+      '<div class="step"><div class="num">' + (i + 1) + '</div><div><div class="t">' + s[0] + '</div><div class="d">' + s[1] + '</div></div>' + s[2] + '</div>').join("") + '</section>'
+  + '<footer><div class="tip"><i>↻</i><span>' + restartTip + '</span></div>'
+  + '<div class="tip"><i><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round" style="width:20px;height:20px"><path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="8.5" r="1.4" fill="#fff"/></svg></i><span><b>Free for 3 days</b>, then unlock your PC for <b>Rs 100</b>, one time.</span></div>'
+  + '<div class="tip"><i>?</i><span>Need help? WhatsApp <b>0303 8039729</b></span></div></footer>';
+</script></body></html>
