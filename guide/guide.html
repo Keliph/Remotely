@@ -35,6 +35,8 @@ body.six .wifi { margin-top: 16px; }
 body.six main { padding-top: 54px; }
 body.six .steps { gap: 12px; margin-top: 22px; }
 body.six .vis { height: 170px; }
+body.four .step { min-height: 300px; }
+body.four .vis { height: 230px; }
 .vis { width: 330px; height: 182px; border-radius: 26px; overflow: hidden; position: relative; display: grid; place-items: center; }
 .shot { width: 100%; height: 100%; object-fit: cover; }
 .vis.dark { background: rgba(0,0,0,.22); }
@@ -113,8 +115,6 @@ const steps = {
     ["Open it on your PC", 'Click <b>Open</b>. A page with a QR code opens. Leave Blanket Remote running.', '<div class="vis dark">' + pcPad + '</div>'],
     ["Scan the code with your phone", 'Point your <b>Camera</b> (or Google Lens) at the QR code and tap the link. The remote opens in <b>Chrome</b>.',
      '<div class="vis dark"><div class="cam"><div class="frame"></div><img class="qr" src="shots/fakeqr.svg"><div class="chip">Open link</div></div></div>'],
-    ["Add it to your Home screen", 'In Chrome tap <b>⋮</b> (top right), then <b>Add to Home screen</b>. Next time it\'s one tap.',
-     '<div class="vis dark"><div class="share"><div>Bookmarks <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M6 3h12v18l-6-4-6 4z"/></svg></div><div class="hl">Add to Home screen <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M12 8v8M8 12h8"/></svg></div></div></div>'],
     ["Control your PC", 'Touchpad, typing, media keys and your apps, right from your phone.',
      '<div class="vis"><img class="shot" src="shots/remote-mid.png"></div>'],
   ],
@@ -123,17 +123,16 @@ const steps = {
     ["Open it on your PC", 'Click <b>Open</b>. A Blanket Remote page with a QR code opens. Leave it running.', '<div class="vis dark">' + pcPad + '</div>'],
     ["Scan the code with your Camera", 'Open the iPhone <b>Camera</b>, point it at the QR code and tap the link. The remote opens in <b>Safari</b>.',
      '<div class="vis dark"><div class="cam"><div class="frame"></div><img class="qr" src="shots/fakeqr.svg"><div class="chip">Open link</div></div></div>'],
-    ["Add it to your Home Screen", 'In Safari tap <b>Share</b>, then <b>Add to Home Screen</b>. Next time it\'s one tap.',
-     '<div class="vis dark"><div class="share"><div>Copy <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg></div><div class="hl">Add to Home Screen <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M12 8v8M8 12h8"/></svg></div></div></div>'],
     ["Control your PC", 'Touchpad, typing, media keys and your apps, right from your phone.',
      '<div class="vis"><img class="shot" src="shots/remote-mid.png"></div>'],
   ],
 };
+document.body.classList.add("four");
 const title = v === "iphone" ? "iPhone setup" : "Android setup";
 const lead = "Control your PC from your phone. Nothing to install on it.";
 const restartTip = v === "iphone"
-  ? '<b>Next time:</b> tap Blanket Remote on your Home Screen. Can\'t connect? Open Blanket Remote on the PC and scan the code again.'
-  : '<b>Next time:</b> tap Blanket Remote on your Home screen. Can\'t connect? Open Blanket Remote on the PC and scan the code again.';
+  ? '<b>Next time:</b> open Blanket Remote on the PC and scan the code again. It starts with Windows by itself.'
+  : '<b>Next time:</b> open Blanket Remote on the PC and scan the code again. It starts with Windows by itself.';
 document.getElementById("root").innerHTML =
   '<header><img src="' + icon + '"><div><div class="brand">Blanket Remote</div><h1>' + title + '</h1></div></header>'
   + '<p class="lead">' + lead + '</p>'
